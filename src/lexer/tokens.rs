@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 
 type Literal = String;
 
@@ -11,6 +12,12 @@ pub struct SourceRef {
 pub struct Token {
     pub token_kind: TokenKind,
     pub source_ref: SourceRef,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} [{}:{}]", self.token_kind, self.source_ref.line, self.source_ref.column)
+    }
 }
 
 #[derive(Debug, PartialEq)]

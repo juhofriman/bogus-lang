@@ -185,7 +185,6 @@ fn lex_source(source: &str) -> Vec<Token> {
         tokens.push(token);
     }
 
-    println!("{:#?}", tokens);
     tokens
 }
 
@@ -260,6 +259,9 @@ mod tests {
                 token_at(Semicolon, 2, 37),
             ]
         )
+
+        // Problems
+        // ;;;;; makes invalid column reference
     }
 
     #[test]
