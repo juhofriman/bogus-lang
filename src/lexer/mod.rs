@@ -38,6 +38,7 @@ fn lex_source(source: &str) -> Vec<Token> {
         current_line: 1,
         current_column: 0,
         token_column_marker: 0,
+        string_escape_flag: false,
     };
     let mut character_iter = source.chars().peekable();
     while let Some(char) = character_iter.next() {
@@ -63,6 +64,7 @@ struct LexBuffer {
     current_line: u32,
     current_column: u32,
     token_column_marker: u32,
+    string_escape_flag: bool,
 }
 
 impl LexBuffer {
@@ -105,6 +107,12 @@ impl LexBuffer {
 
         match current_char {
             _ if self.mode == LexingState::LineComment => (),
+            _ if self.string_escape_flag == true => {
+                // This should check that next is actually escapable
+                self.buffer.push(current_char);
+                self.string_escape_flag = false;
+                return None
+            },
             _ if current_char == '/' && *peek.unwrap_or(&' ') == '/' => {
                 self.mode = LexingState::LineComment;
                 return None;
@@ -120,6 +128,10 @@ impl LexBuffer {
             _ if self.buffer.is_empty() && self.mode != LexingState::String && current_char == '"' => {
                 self.mode = LexingState::String;
                 return None;
+            }
+            _ if self.mode == LexingState::String && current_char == '\\' => {
+                self.string_escape_flag = true;
+                return None
             }
             _ if self.mode == LexingState::String && current_char == '"' => {}
             _ => {
@@ -243,6 +255,7 @@ mod tests {
             current_line: 0,
             current_column: 0,
             token_column_marker: 0,
+            string_escape_flag: false,
         })
     }
 
@@ -268,6 +281,15 @@ mod tests {
         token_lexes_to("+", Plus);
         token_lexes_to("/", Division);
         token_lexes_to(",", Comma);
+    }
+
+    #[test]
+    fn test_string_escape() {
+        // this is "\""
+        with_input_lexes_to("\"\\\"\"", vec![dummy_token(Str("\"".to_string()))]);
+        with_input_lexes_to("\"hello \\\"world\\\"\"", vec![dummy_token(Str("hello \"world\"".to_string()))]);
+        // this is "\\"
+        with_input_lexes_to("\"\\\\\"", vec![dummy_token(Str("\\".to_string()))]);
     }
 
     #[test]
