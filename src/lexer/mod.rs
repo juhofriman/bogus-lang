@@ -383,6 +383,22 @@ mod tests {
     #[test]
     fn test_interesting_corner_cases() {
         with_input_lexes_to(
+            "",
+            vec![],
+        );
+        with_input_lexes_to(
+            " ",
+            vec![],
+        );
+        with_input_lexes_to(
+            "\t",
+            vec![],
+        );
+        with_input_lexes_to(
+            "\n",
+            vec![],
+        );
+        with_input_lexes_to(
             "1 + 2",
             vec![
                 dummy_token(Integer(1)),
