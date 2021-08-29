@@ -168,7 +168,11 @@ impl LexBuffer {
                     "/" => Some(self.pop_buffer(TokenKind::Division)),
                     "->" => Some(self.pop_buffer(TokenKind::Arrow)),
                     ";" => Some(self.pop_buffer(TokenKind::Semicolon)),
-                    "=" => Some(self.pop_buffer(TokenKind::Equals)),
+                    "=" => self.pop_buffer_cond(
+                        TokenKind::Assign,
+                        peek,
+                        |peek| *peek != '='),
+                    "==" => Some(self.pop_buffer(TokenKind::Equals)),
                     // KLUDGE: this will actually MAKE a token even if it's not used
                     // Should be refactored to returning token from peek fn
                     _ => self.pop_buffer_cond(
@@ -193,6 +197,7 @@ fn is_delimiting(c: &char) -> bool {
         '-' => true,
         '/' => true,
         ',' => true,
+        '=' => true,
         _ => false
     }
 }
@@ -201,7 +206,7 @@ fn is_delimiting(c: &char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Equals, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals};
 
     // Internal implementation test helpers
 
@@ -247,7 +252,8 @@ mod tests {
     fn test_lexer_single_tokens() {
         token_lexes_to("let", Let);
         token_lexes_to("fun", Fun);
-        token_lexes_to("=", Equals);
+        token_lexes_to("=", Assign);
+        token_lexes_to("==", Equals);
         token_lexes_to("foo", Identifier("foo".to_string()));
         for nmbr in 0..100 {
             token_lexes_to(&nmbr.to_string(), Integer(nmbr));
@@ -269,7 +275,14 @@ mod tests {
         with_input_lexes_to("let a = 1;", vec![
             dummy_token(Let),
             dummy_token(Identifier("a".to_string())),
-            dummy_token(Equals),
+            dummy_token(Assign),
+            dummy_token(Integer(1)),
+            dummy_token(Semicolon),
+        ]);
+        with_input_lexes_to("let a=1;", vec![
+            dummy_token(Let),
+            dummy_token(Identifier("a".to_string())),
+            dummy_token(Assign),
             dummy_token(Integer(1)),
             dummy_token(Semicolon),
         ]);
@@ -314,6 +327,16 @@ mod tests {
             dummy_token(Division),
             dummy_token(Integer(2)),
         ]);
+        with_input_lexes_to("1 == 2", vec![
+            dummy_token(Integer(1)),
+            dummy_token(Equals),
+            dummy_token(Integer(2)),
+        ]);
+        with_input_lexes_to("1==2", vec![
+            dummy_token(Integer(1)),
+            dummy_token(Equals),
+            dummy_token(Integer(2)),
+        ]);
     }
 
     #[test]
@@ -323,12 +346,12 @@ mod tests {
             vec![
                 token_at(Let, 1, 0),
                 token_at(Identifier("foo".to_string()), 1, 4),
-                token_at(Equals, 1, 8),
+                token_at(Assign, 1, 8),
                 token_at(Integer(1), 1, 10),
                 token_at(Semicolon, 1, 11),
                 token_at(Let, 2, 0),
                 token_at(Identifier("bar".to_string()), 2, 4),
-                token_at(Equals, 2, 8),
+                token_at(Assign, 2, 8),
                 token_at(Str("bar value with whitespace".to_string()), 2, 10),
                 token_at(Semicolon, 2, 37),
             ],
@@ -364,7 +387,7 @@ mod tests {
             vec![
                 dummy_token(Let),
                 dummy_token(Identifier("a".to_string())),
-                dummy_token(Equals),
+                dummy_token(Assign),
                 dummy_token(Integer(1)),
                 dummy_token(Semicolon),
             ],
@@ -403,14 +426,14 @@ mod tests {
         with_input_lexes_to("let a = 5; // Hello world", vec![
             dummy_token(Let),
             dummy_token(Identifier("a".to_string())),
-            dummy_token(Equals),
+            dummy_token(Assign),
             dummy_token(Integer(5)),
             dummy_token(Semicolon),
         ]);
         with_input_lexes_to("let a = 5;// Hello world", vec![
             dummy_token(Let),
             dummy_token(Identifier("a".to_string())),
-            dummy_token(Equals),
+            dummy_token(Assign),
             dummy_token(Integer(5)),
             dummy_token(Semicolon),
         ]);

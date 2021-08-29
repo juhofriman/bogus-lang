@@ -36,6 +36,7 @@ pub enum TokenKind {
     Fun,
 
     // Operators
+    Assign,
     Equals,
     Minus,
     Plus,
