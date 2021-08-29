@@ -32,12 +32,19 @@ fn main() {
 }
 
 fn lex_input(input: &str) {
-    let mut lexer = create_lexer(input);
-    println!("[");
-    while lexer.has_next() {
-        if let Some(token) = lexer.next() {
-            println!("\t{},", token)
+    match create_lexer(input) {
+        Ok(mut lexer) => {
+            println!("[");
+            while lexer.has_next() {
+                if let Some(token) = lexer.next() {
+                    println!("\t{},", token)
+                }
+            }
+            println!("]");
+        },
+        Err(error) => {
+            println!("{}", error)
         }
     }
-    println!("]");
+
 }

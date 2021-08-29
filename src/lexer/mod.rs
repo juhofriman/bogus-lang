@@ -1,4 +1,5 @@
-use crate::lexer::tokens::{Token, TokenKind, create_token};
+use crate::lexer::tokens::{Token, TokenKind, create_token, SourceRef};
+use core::fmt;
 
 mod tokens;
 
@@ -22,15 +23,27 @@ impl Lexer {
     }
 }
 
-/// Creates consumable lexer for given input
-pub fn create_lexer(source: &str) -> Lexer {
-    Lexer {
-        pointer: 0,
-        tokens: lex_source(source),
+pub struct LexingError {
+    msg: String,
+    location: SourceRef,
+}
+
+impl fmt::Display for LexingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Lexing Error: {} @ {}", self.msg, self.location)
     }
 }
 
-fn lex_source(source: &str) -> Vec<Token> {
+/// Creates consumable lexer for given input
+pub fn create_lexer(source: &str) -> Result<Lexer, LexingError> {
+    let tokens = lex_source(source)?;
+    Ok(Lexer {
+        pointer: 0,
+        tokens,
+    })
+}
+
+fn lex_source(source: &str) -> Result<Vec<Token>, LexingError> {
     let mut tokens: Vec<Token> = vec![];
     let mut buffer = LexBuffer {
         mode: LexingState::Normal,
@@ -42,11 +55,11 @@ fn lex_source(source: &str) -> Vec<Token> {
     };
     let mut character_iter = source.chars().peekable();
     while let Some(char) = character_iter.next() {
-        if let Some(token) = buffer.push_char(char, character_iter.peek()) {
+        if let Some(token) = buffer.push_char(char, character_iter.peek())? {
             tokens.push(token);
         }
     }
-    tokens
+    Ok(tokens)
 }
 
 #[derive(PartialEq)]
@@ -81,19 +94,19 @@ impl LexBuffer {
         &mut self,
         kind: TokenKind,
         peek: Option<&char>,
-        cond: fn(&char) -> bool) -> Option<Token> {
+        cond: fn(&char) -> bool) -> Result<Option<Token>, LexingError> {
         match peek {
-            None => Some(self.pop_buffer(kind)),
+            None => Ok(Some(self.pop_buffer(kind))),
             Some(peek) => {
                 if cond(peek) {
-                    return Some(self.pop_buffer(kind));
+                    return Ok(Some(self.pop_buffer(kind)));
                 }
-                None
+                Ok(None)
             }
         }
     }
 
-    fn push_char(&mut self, current_char: char, peek: Option<&char>) -> Option<Token> {
+    fn push_char(&mut self, current_char: char, peek: Option<&char>) -> Result<Option<Token>, LexingError> {
         self.current_column += 1;
         if current_char == '\n' {
             if self.mode == LexingState::LineComment {
@@ -102,7 +115,7 @@ impl LexBuffer {
             self.current_line += 1;
             self.current_column = 0;
             self.token_column_marker = 0;
-            return None;
+            return Ok(None);
         }
 
         match current_char {
@@ -111,15 +124,15 @@ impl LexBuffer {
                 // This should check that next is actually escapable
                 self.buffer.push(current_char);
                 self.string_escape_flag = false;
-                return None
-            },
-            _ if current_char == '/' && *peek.unwrap_or(&' ') == '/' => {
+                return Ok(None);
+            }
+            _ if current_char == '/' && *peek.unwrap_or(&' ') == '/' && self.mode == LexingState::Normal => {
                 self.mode = LexingState::LineComment;
-                return None;
+                return Ok(None);
             }
             _ if self.mode != LexingState::String && current_char.is_whitespace() => {
                 self.token_column_marker += 1;
-                return None;
+                return Ok(None);
             }
             _ if self.buffer.is_empty() && current_char.is_digit(10) => {
                 self.mode = LexingState::Integer;
@@ -127,13 +140,22 @@ impl LexBuffer {
             }
             _ if self.buffer.is_empty() && self.mode != LexingState::String && current_char == '"' => {
                 self.mode = LexingState::String;
-                return None;
+                return Ok(None);
             }
             _ if self.mode == LexingState::String && current_char == '\\' => {
                 self.string_escape_flag = true;
-                return None
+                return Ok(None);
             }
             _ if self.mode == LexingState::String && current_char == '"' => {}
+            _ if self.mode == LexingState::String && peek.is_none() => {
+                return Err(LexingError {
+                    msg: "string is not terminated".to_string(),
+                    location: SourceRef {
+                        line: self.current_line,
+                        column: self.token_column_marker,
+                    }
+                });
+            }
             _ => {
                 self.buffer.push(current_char);
             }
@@ -141,23 +163,34 @@ impl LexBuffer {
 
         match self.mode {
             LexingState::LineComment => {
-                None
+                Ok(None)
             }
             LexingState::Integer => {
-                let ready = self.pop_buffer_cond(TokenKind::Integer(self.buffer.parse().unwrap()),
+                let value_to_be = self.buffer.parse();
+                if value_to_be.is_err() {
+                    return Err(LexingError {
+                        msg: "identifier can't start with digit".to_string(),
+                        location: SourceRef {
+                            line: self.current_line,
+                            column: self.token_column_marker,
+                        }
+                    })
+                }
+                let value_to_be = value_to_be.unwrap();
+                let ready = self.pop_buffer_cond(TokenKind::Integer(value_to_be),
                                                  peek,
-                                                 |peek| is_delimiting(peek));
+                                                 |peek| is_delimiting(peek))?;
                 if ready.is_some() {
                     self.mode = LexingState::Normal;
                 }
-                ready
+                Ok(ready)
             }
             LexingState::String => {
                 if current_char == '"' {
                     self.mode = LexingState::Normal;
-                    return Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string())));
+                    return Ok(Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string()))));
                 }
-                None
+                Ok(None)
             }
             LexingState::Normal => {
                 match self.buffer.as_str() {
@@ -169,22 +202,22 @@ impl LexBuffer {
                         TokenKind::Fun,
                         peek,
                         |peek| is_delimiting(peek)),
-                    "(" => Some(self.pop_buffer(TokenKind::LeftParens)),
-                    ")" => Some(self.pop_buffer(TokenKind::RightParens)),
-                    "," => Some(self.pop_buffer(TokenKind::Comma)),
+                    "(" => Ok(Some(self.pop_buffer(TokenKind::LeftParens))),
+                    ")" => Ok(Some(self.pop_buffer(TokenKind::RightParens))),
+                    "," => Ok(Some(self.pop_buffer(TokenKind::Comma))),
                     "-" => self.pop_buffer_cond(
                         TokenKind::Minus,
                         peek,
                         |peek| *peek != '>'),
-                    "+" => Some(self.pop_buffer(TokenKind::Plus)),
-                    "/" => Some(self.pop_buffer(TokenKind::Division)),
-                    "->" => Some(self.pop_buffer(TokenKind::Arrow)),
-                    ";" => Some(self.pop_buffer(TokenKind::Semicolon)),
+                    "+" => Ok(Some(self.pop_buffer(TokenKind::Plus))),
+                    "/" => Ok(Some(self.pop_buffer(TokenKind::Division))),
+                    "->" => Ok(Some(self.pop_buffer(TokenKind::Arrow))),
+                    ";" => Ok(Some(self.pop_buffer(TokenKind::Semicolon))),
                     "=" => self.pop_buffer_cond(
                         TokenKind::Assign,
                         peek,
                         |peek| *peek != '='),
-                    "==" => Some(self.pop_buffer(TokenKind::Equals)),
+                    "==" => Ok(Some(self.pop_buffer(TokenKind::Equals))),
                     // KLUDGE: this will actually MAKE a token even if it's not used
                     // Should be refactored to returning token from peek fn
                     _ => self.pop_buffer_cond(
@@ -225,26 +258,26 @@ mod tests {
     #[test]
     fn test_lex_buffer() {
         with_fresh_buffer(|buffer| {
-            assert!(buffer.push_char('l', Some(&'e')).is_none());
-            assert!(buffer.push_char('e', Some(&'t')).is_none());
-            assert!(buffer.push_char('t', None).is_some());
+            assert!(buffer.push_char('l', Some(&'e')).unwrap_or_else(|_| panic!("Unexpected Err")).is_none());
+            assert!(buffer.push_char('e', Some(&'t')).unwrap_or_else(|_| panic!("Unexpected Err")).is_none());
+            assert!(buffer.push_char('t', None).unwrap_or_else(|_| panic!("Unexpected Err")).is_some());
         });
 
         with_fresh_buffer(|buffer| {
-            assert!(buffer.push_char('l', Some(&'e')).is_none());
-            assert!(buffer.push_char('e', Some(&'t')).is_none());
-            assert!(buffer.push_char('t', Some(&'t')).is_none());
-            assert!(buffer.push_char('t', Some(&'u')).is_none());
-            assert!(buffer.push_char('u', None).is_some());
+            assert!(buffer.push_char('l', Some(&'e')).unwrap_or_else(|_| panic!("Unexpected Err")).is_none());
+            assert!(buffer.push_char('e', Some(&'t')).unwrap_or_else(|_| panic!("Unexpected Err")).is_none());
+            assert!(buffer.push_char('t', Some(&'t')).unwrap_or_else(|_| panic!("Unexpected Err")).is_none());
+            assert!(buffer.push_char('t', Some(&'u')).unwrap_or_else(|_| panic!("Unexpected Err")).is_none());
+            assert!(buffer.push_char('u', None).unwrap_or_else(|_| panic!("Unexpected Err")).is_some());
         });
 
         with_fresh_buffer(|buffer| {
-            assert!(buffer.push_char('-', None).is_some());
+            assert!(buffer.push_char('-', None).unwrap_or_else(|_| panic!("Unexpected Err")).is_some());
         });
 
         with_fresh_buffer(|buffer| {
-            assert!(buffer.push_char('-', Some(&'>')).is_none());
-            assert!(buffer.push_char('>', None).is_some());
+            assert!(buffer.push_char('-', Some(&'>')).unwrap_or_else(|_| panic!("Unexpected Err")).is_none());
+            assert!(buffer.push_char('>', None).unwrap_or_else(|_| panic!("Unexpected Err")).is_some());
         });
     }
 
@@ -381,6 +414,31 @@ mod tests {
     }
 
     #[test]
+    fn test_error_cases() {
+        with_input_errors_to("1234var", LexingError {
+            msg: "identifier can't start with digit".to_string(),
+            location: SourceRef {
+                line: 1,
+                column: 3,
+            }
+        });
+        with_input_errors_to("\"hello", LexingError {
+            msg: "string is not terminated".to_string(),
+            location: SourceRef {
+                line: 1,
+                column: 3,
+            }
+        });
+        with_input_errors_to("\"hello // comment", LexingError {
+            msg: "string is not terminated".to_string(),
+            location: SourceRef {
+                line: 1,
+                column: 3,
+            }
+        });
+    }
+
+    #[test]
     fn test_interesting_corner_cases() {
         with_input_lexes_to(
             "",
@@ -485,6 +543,15 @@ mod tests {
         do_lexing_assertion(input, expected_tokens, false)
     }
 
+    fn with_input_errors_to(input: &str, expected_error: LexingError) {
+        match create_lexer(input) {
+            Ok(_) => panic!("Expecting lexer to error, but working lexer was returned. Input: {}", input),
+            Err(error) => {
+                assert_eq!(expected_error.msg, error.msg)
+            }
+        }
+    }
+
     fn with_input_lexes_to_assert_columns(input: &str, expected_tokens: Vec<Token>) {
         do_lexing_assertion(input, expected_tokens, true)
     }
@@ -492,29 +559,32 @@ mod tests {
     /// Asserts given input lexes to expected tokens
     /// Note: this also checks lines and columns
     fn do_lexing_assertion(input: &str, expected_tokens: Vec<Token>, assert_refs: bool) {
-        let mut lexer = create_lexer(input);
-        for expected_token in expected_tokens {
-            let (received_line, received_column) = advance_expect(&mut lexer, &expected_token.token_kind);
-            if assert_refs {
-                assert_eq!(
-                    expected_token.source_ref.line,
-                    received_line,
-                    "Wrong line ref for token {:?} in source `{}`",
-                    expected_token.token_kind,
-                    input
-                );
-                assert_eq!(
-                    expected_token.source_ref.column,
-                    received_column,
-                    "Wrong column ref for token {:?} in source `{}`",
-                    expected_token.token_kind,
-                    input
-                );
-            }
+        match create_lexer(input) {
+            Ok(mut lexer) => {
+                for expected_token in expected_tokens {
+                    let (received_line, received_column) = advance_expect(&mut lexer, &expected_token.token_kind);
+                    if assert_refs {
+                        assert_eq!(
+                            expected_token.source_ref.line,
+                            received_line,
+                            "Wrong line ref for token {:?} in source `{}`",
+                            expected_token.token_kind,
+                            input
+                        );
+                        assert_eq!(
+                            expected_token.source_ref.column,
+                            received_column,
+                            "Wrong column ref for token {:?} in source `{}`",
+                            expected_token.token_kind,
+                            input
+                        );
+                    }
+                }
+                assert!(!lexer.has_next(), "lexer had more tokens after expected!")
+            },
+            Err(error) => panic!("Unexpected lexing error: {}", error.msg)
         }
-        assert!(!lexer.has_next(), "lexer had more tokens after expected!")
     }
-
 
     // Advances lexer and asserts token kind
     // returns (line, column) of received token

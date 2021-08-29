@@ -8,7 +8,7 @@ pub struct Token {
 
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} [{}:{}]", self.token_kind, self.source_ref.line, self.source_ref.column)
+        write!(f, "{:?} {}", self.token_kind, self.source_ref)
     }
 }
 
@@ -18,7 +18,7 @@ pub fn create_token(token_kind: TokenKind, line: u32, column: u32) -> Token {
         token_kind,
         source_ref: SourceRef {
             line,
-            column: column,
+            column,
         },
     }
 }
@@ -27,6 +27,12 @@ pub fn create_token(token_kind: TokenKind, line: u32, column: u32) -> Token {
 pub struct SourceRef {
     pub line: u32,
     pub column: u32,
+}
+
+impl Display for SourceRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}:{}]", self.line, self.column)
+    }
 }
 
 #[derive(Debug, PartialEq)]
