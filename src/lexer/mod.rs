@@ -53,6 +53,7 @@ enum LexingState {
     Normal,
     Integer,
     String,
+    LineComment,
 }
 
 /// LexBuffer is used for lexing the given input statefully
@@ -68,8 +69,8 @@ impl LexBuffer {
     fn pop_buffer(&mut self, kind: TokenKind) -> Token {
         self.buffer.clear();
         let new_token = create_token(kind,
-                     self.current_line,
-                     self.token_column_marker);
+                                     self.current_line,
+                                     self.token_column_marker);
         self.token_column_marker = self.current_column;
         new_token
     }
@@ -93,38 +94,47 @@ impl LexBuffer {
     fn push_char(&mut self, current_char: char, peek: Option<&char>) -> Option<Token> {
         self.current_column += 1;
         if current_char == '\n' {
+            if self.mode == LexingState::LineComment {
+                self.mode = LexingState::Normal
+            }
             self.current_line += 1;
             self.current_column = 0;
             self.token_column_marker = 0;
-            return None
+            return None;
         }
 
         match current_char {
-            _ if self.mode != LexingState::String  && current_char.is_whitespace() => {
+            _ if self.mode == LexingState::LineComment => (),
+            _ if current_char == '/' && *peek.unwrap_or(&' ') == '/' => {
+                self.mode = LexingState::LineComment;
+                return None;
+            }
+            _ if self.mode != LexingState::String && current_char.is_whitespace() => {
                 self.token_column_marker += 1;
-                return None
-            },
+                return None;
+            }
             _ if self.buffer.is_empty() && current_char.is_digit(10) => {
                 self.mode = LexingState::Integer;
                 self.buffer.push(current_char);
             }
-            _ if self.buffer.is_empty() && self.mode != LexingState::String  && current_char == '"' => {
+            _ if self.buffer.is_empty() && self.mode != LexingState::String && current_char == '"' => {
                 self.mode = LexingState::String;
-                return None
+                return None;
             }
-            _ if self.mode == LexingState::String && current_char == '"'  => {
-
-            },
+            _ if self.mode == LexingState::String && current_char == '"' => {}
             _ => {
                 self.buffer.push(current_char);
             }
         }
 
         match self.mode {
+            LexingState::LineComment => {
+                None
+            }
             LexingState::Integer => {
                 let ready = self.pop_buffer_cond(TokenKind::Integer(self.buffer.parse().unwrap()),
-                                     peek,
-                                     |peek| is_delimiting(peek));
+                                                 peek,
+                                                 |peek| is_delimiting(peek));
                 if ready.is_some() {
                     self.mode = LexingState::Normal;
                 }
@@ -133,7 +143,7 @@ impl LexBuffer {
             LexingState::String => {
                 if current_char == '"' {
                     self.mode = LexingState::Normal;
-                    return Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string())))
+                    return Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string())));
                 }
                 None
             }
@@ -155,6 +165,7 @@ impl LexBuffer {
                         peek,
                         |peek| *peek != '>'),
                     "+" => Some(self.pop_buffer(TokenKind::Plus)),
+                    "/" => Some(self.pop_buffer(TokenKind::Division)),
                     "->" => Some(self.pop_buffer(TokenKind::Arrow)),
                     ";" => Some(self.pop_buffer(TokenKind::Semicolon)),
                     "=" => Some(self.pop_buffer(TokenKind::Equals)),
@@ -180,6 +191,7 @@ fn is_delimiting(c: &char) -> bool {
         ')' => true,
         '+' => true,
         '-' => true,
+        '/' => true,
         ',' => true,
         _ => false
     }
@@ -189,7 +201,7 @@ fn is_delimiting(c: &char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Equals, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Equals, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division};
 
     // Internal implementation test helpers
 
@@ -248,6 +260,7 @@ mod tests {
         token_lexes_to("->", Arrow);
         token_lexes_to("-", Minus);
         token_lexes_to("+", Plus);
+        token_lexes_to("/", Division);
         token_lexes_to(",", Comma);
     }
 
@@ -295,6 +308,11 @@ mod tests {
             dummy_token(Identifier("c".to_string())),
             dummy_token(RightParens),
             dummy_token(Semicolon),
+        ]);
+        with_input_lexes_to("1 / 2", vec![
+            dummy_token(Integer(1)),
+            dummy_token(Division),
+            dummy_token(Integer(2)),
         ]);
     }
 
@@ -377,6 +395,25 @@ mod tests {
                 dummy_token(Semicolon),
             ],
         );
+    }
+
+    #[test]
+    fn test_comments() {
+        with_input_lexes_to("// Hello world", vec![]);
+        with_input_lexes_to("let a = 5; // Hello world", vec![
+            dummy_token(Let),
+            dummy_token(Identifier("a".to_string())),
+            dummy_token(Equals),
+            dummy_token(Integer(5)),
+            dummy_token(Semicolon),
+        ]);
+        with_input_lexes_to("let a = 5;// Hello world", vec![
+            dummy_token(Let),
+            dummy_token(Identifier("a".to_string())),
+            dummy_token(Equals),
+            dummy_token(Integer(5)),
+            dummy_token(Semicolon),
+        ]);
     }
 
     fn token_lexes_to(input: &str, expected_kind: TokenKind) {

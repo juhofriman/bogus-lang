@@ -39,6 +39,7 @@ pub enum TokenKind {
     Equals,
     Minus,
     Plus,
+    Division,
     Arrow,
 
     // Delimiters
