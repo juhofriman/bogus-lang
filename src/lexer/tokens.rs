@@ -13,12 +13,12 @@ impl Display for Token {
 }
 
 /// Creates a token with given kind and source references
-pub fn create_token(token_kind: TokenKind, line: u32, column: u32, offset: usize) -> Token {
+pub fn create_token(token_kind: TokenKind, line: u32, column: u32) -> Token {
     Token {
         token_kind,
         source_ref: SourceRef {
             line,
-            column: column - (offset as u32),
+            column: column,
         },
     }
 }
@@ -42,6 +42,7 @@ pub enum TokenKind {
     Arrow,
 
     // Delimiters
+    Comma,
     Semicolon,
     LeftParens,
     RightParens,
@@ -62,8 +63,8 @@ mod tests {
     #[test]
     fn token_usage() {
         let tokens = vec![
-            create_token(TokenKind::Let, 0, 0, 0),
-            create_token(TokenKind::Identifier("seppo".to_string()), 0, 3, 0),
+            create_token(TokenKind::Let, 0, 0),
+            create_token(TokenKind::Identifier("seppo".to_string()), 0, 3),
         ];
         assert_eq!(tokens.len(), 2)
     }

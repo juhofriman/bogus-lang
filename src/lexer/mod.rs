@@ -4,11 +4,10 @@ mod tokens;
 
 pub struct Lexer {
     tokens: Vec<Token>,
-    pointer: usize
+    pointer: usize,
 }
 
 impl Lexer {
-
     pub fn next(&mut self) -> Option<&Token> {
         let token = self.tokens.get(self.pointer);
         self.pointer += 1;
@@ -17,7 +16,7 @@ impl Lexer {
 
     pub fn has_next(&self) -> bool {
         if self.tokens.is_empty() {
-            return false
+            return false;
         }
         self.pointer <= self.tokens.len() - 1
     }
@@ -27,8 +26,26 @@ impl Lexer {
 pub fn create_lexer(source: &str) -> Lexer {
     Lexer {
         pointer: 0,
-        tokens: lex_source(source)
+        tokens: lex_source(source),
     }
+}
+
+fn lex_source(source: &str) -> Vec<Token> {
+    let mut tokens: Vec<Token> = vec![];
+    let mut buffer = LexBuffer {
+        mode: LexingState::Normal,
+        buffer: String::new(),
+        current_line: 1,
+        current_column: 0,
+        token_column_marker: 0,
+    };
+    let mut character_iter = source.chars().peekable();
+    while let Some(char) = character_iter.next() {
+        if let Some(token) = buffer.push_char(char, character_iter.peek()) {
+            tokens.push(token);
+        }
+    }
+    tokens
 }
 
 #[derive(PartialEq)]
@@ -38,178 +55,133 @@ enum LexingState {
     String,
 }
 
+/// LexBuffer is used for lexing the given input statefully
 struct LexBuffer {
     buffer: String,
     mode: LexingState,
+    current_line: u32,
+    current_column: u32,
+    token_column_marker: u32,
 }
 
-struct SourceMarker {
-    line: u32,
-    column: u32,
-}
-
-
-fn lex_source(source: &str) -> Vec<Token> {
-    let mut tokens: Vec<Token> = vec![];
-    let mut buffer = LexBuffer {
-        buffer: String::new(),
-        mode: LexingState::Normal,
-    };
-    let mut src_mark = SourceMarker {
-        line: 1,
-        column: 0,
-    };
-    for c in source.chars() {
-        match preflow(&mut buffer, c, &mut src_mark) {
-            (None, None) => (),
-            (Some(token), None) => {
-                tokens.push(token);
-            },
-            (None, Some(token)) => {
-                tokens.push(token);
-            },
-            (Some(token), Some(another_token)) => {
-                tokens.push(token);
-                tokens.push(another_token);
-            },
-        }
-        if c == '\n' {
-            src_mark.line += 1;
-            src_mark.column = 0;
-        } else {
-            src_mark.column += 1;
-        }
-    }
-    if let Some(token) = buffer_2_token(&mut buffer, &src_mark) {
-        tokens.push(token);
+impl LexBuffer {
+    fn pop_buffer(&mut self, kind: TokenKind) -> Token {
+        self.buffer.clear();
+        let new_token = create_token(kind,
+                     self.current_line,
+                     self.token_column_marker);
+        self.token_column_marker = self.current_column;
+        new_token
     }
 
-    tokens
-}
-
-fn preflow(buffer: &mut LexBuffer, c: char, source_marker: &mut SourceMarker) -> (Option<Token>, Option<Token>) {
-    match c {
-        _ if c.is_whitespace() && buffer.mode != LexingState::String  => {
-            let token = buffer_2_token(buffer, source_marker);
-            buffer.buffer.clear();
-            (token, None)
-        },
-        _ if is_delimiting(&c) && buffer.mode != LexingState::String => {
-            let token = buffer_2_token(buffer, source_marker);
-            buffer.buffer.clear();
-            buffer.buffer.push(c);
-            source_marker.column += 1;
-            let delimiting_token = buffer_2_token(buffer, source_marker);
-            buffer.buffer.clear();
-            (token, delimiting_token)
-        },
-        _ if buffer.buffer.is_empty() && c.is_digit(10) => {
-            buffer.mode = LexingState::Integer;
-            buffer.buffer.push(c);
-            (None, None)
-        },
-        _ if buffer.buffer.is_empty() && c == '"' => {
-            buffer.mode = LexingState::String;
-            (None, None)
-        },
-        _ if buffer.mode == LexingState::String && c == '"' => {
-            let token = buffer_2_token(buffer, source_marker);
-            buffer.buffer.clear();
-            (token, None)
-        },
-        _ if buffer.mode == LexingState::Integer && !c.is_digit(10) => {
-            let token = buffer_2_token(buffer, source_marker);
-            buffer.buffer.clear();
-            buffer.buffer.push(c);
-            (token, None)
+    fn pop_buffer_cond(
+        &mut self,
+        kind: TokenKind,
+        peek: Option<&char>,
+        cond: fn(&char) -> bool) -> Option<Token> {
+        match peek {
+            None => Some(self.pop_buffer(kind)),
+            Some(peek) => {
+                if cond(peek) {
+                    return Some(self.pop_buffer(kind));
+                }
+                None
+            }
         }
-        _ => {
-            buffer.buffer.push(c);
-            (None, None)
+    }
+
+    fn push_char(&mut self, current_char: char, peek: Option<&char>) -> Option<Token> {
+        self.current_column += 1;
+        if current_char == '\n' {
+            self.current_line += 1;
+            self.current_column = 0;
+            self.token_column_marker = 0;
+            return None
+        }
+
+        match current_char {
+            _ if self.mode != LexingState::String  && current_char.is_whitespace() => {
+                self.token_column_marker += 1;
+                return None
+            },
+            _ if self.buffer.is_empty() && current_char.is_digit(10) => {
+                self.mode = LexingState::Integer;
+                self.buffer.push(current_char);
+            }
+            _ if self.buffer.is_empty() && self.mode != LexingState::String  && current_char == '"' => {
+                self.mode = LexingState::String;
+                return None
+            }
+            _ if self.mode == LexingState::String && current_char == '"'  => {
+
+            },
+            _ => {
+                self.buffer.push(current_char);
+            }
+        }
+
+        match self.mode {
+            LexingState::Integer => {
+                let ready = self.pop_buffer_cond(TokenKind::Integer(self.buffer.parse().unwrap()),
+                                     peek,
+                                     |peek| is_delimiting(peek));
+                if ready.is_some() {
+                    self.mode = LexingState::Normal;
+                }
+                ready
+            }
+            LexingState::String => {
+                if current_char == '"' {
+                    self.mode = LexingState::Normal;
+                    return Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string())))
+                }
+                None
+            }
+            LexingState::Normal => {
+                match self.buffer.as_str() {
+                    "let" => self.pop_buffer_cond(
+                        TokenKind::Let,
+                        peek,
+                        |peek| is_delimiting(peek)),
+                    "fun" => self.pop_buffer_cond(
+                        TokenKind::Fun,
+                        peek,
+                        |peek| is_delimiting(peek)),
+                    "(" => Some(self.pop_buffer(TokenKind::LeftParens)),
+                    ")" => Some(self.pop_buffer(TokenKind::RightParens)),
+                    "," => Some(self.pop_buffer(TokenKind::Comma)),
+                    "-" => self.pop_buffer_cond(
+                        TokenKind::Minus,
+                        peek,
+                        |peek| *peek != '>'),
+                    "+" => Some(self.pop_buffer(TokenKind::Plus)),
+                    "->" => Some(self.pop_buffer(TokenKind::Arrow)),
+                    ";" => Some(self.pop_buffer(TokenKind::Semicolon)),
+                    "=" => Some(self.pop_buffer(TokenKind::Equals)),
+                    // KLUDGE: this will actually MAKE a token even if it's not used
+                    // Should be refactored to returning token from peek fn
+                    _ => self.pop_buffer_cond(
+                        TokenKind::Identifier(self.buffer.to_string()),
+                        peek,
+                        |peek| is_delimiting(peek),
+                    )
+                }
+            }
         }
     }
 }
+
 
 fn is_delimiting(c: &char) -> bool {
     match c {
+        _ if c.is_whitespace() => true,
         ';' => true,
         '(' => true,
         ')' => true,
+        '+' => true,
+        '-' => true,
+        ',' => true,
         _ => false
-    }
-}
-
-fn buffer_2_token(buffer: &mut LexBuffer, source_marker: &SourceMarker) -> Option<Token> {
-    if buffer.mode == LexingState::Integer {
-        buffer.mode = LexingState::Normal;
-        return Some(create_token(
-            TokenKind::Integer(buffer.buffer.parse().unwrap()),
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len()))
-    }
-    if buffer.mode == LexingState::String {
-        buffer.mode = LexingState::Normal;
-        return Some(create_token(
-            TokenKind::Str(buffer.buffer.to_string()),
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len() + 1))
-    }
-    match buffer.buffer.as_str() {
-        "let" => Some(create_token(
-            TokenKind::Let,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        "fun" => Some(create_token(
-            TokenKind::Fun,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        "-" => Some(create_token(
-            TokenKind::Minus,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        "+" => Some(create_token(
-            TokenKind::Plus,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        "->" => Some(create_token(
-            TokenKind::Arrow,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        "=" => Some(create_token(
-            TokenKind::Equals,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        ";" => Some(create_token(
-            TokenKind::Semicolon,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        "(" => Some(create_token(
-            TokenKind::LeftParens,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        ")" => Some(create_token(
-            TokenKind::RightParens,
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
-        _ if buffer.buffer.is_empty() => {
-            None
-        },
-        _ => Some(create_token(
-            TokenKind::Identifier(buffer.buffer.to_string()),
-            source_marker.line,
-            source_marker.column,
-            buffer.buffer.len())),
     }
 }
 
@@ -217,16 +189,56 @@ fn buffer_2_token(buffer: &mut LexBuffer, source_marker: &SourceMarker) -> Optio
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Equals, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Equals, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma};
+
+    // Internal implementation test helpers
+
+    #[test]
+    fn test_lex_buffer() {
+        with_fresh_buffer(|buffer| {
+            assert!(buffer.push_char('l', Some(&'e')).is_none());
+            assert!(buffer.push_char('e', Some(&'t')).is_none());
+            assert!(buffer.push_char('t', None).is_some());
+        });
+
+        with_fresh_buffer(|buffer| {
+            assert!(buffer.push_char('l', Some(&'e')).is_none());
+            assert!(buffer.push_char('e', Some(&'t')).is_none());
+            assert!(buffer.push_char('t', Some(&'t')).is_none());
+            assert!(buffer.push_char('t', Some(&'u')).is_none());
+            assert!(buffer.push_char('u', None).is_some());
+        });
+
+        with_fresh_buffer(|buffer| {
+            assert!(buffer.push_char('-', None).is_some());
+        });
+
+        with_fresh_buffer(|buffer| {
+            assert!(buffer.push_char('-', Some(&'>')).is_none());
+            assert!(buffer.push_char('>', None).is_some());
+        });
+    }
+
+    fn with_fresh_buffer(body: fn(&mut LexBuffer) -> ()) {
+        body(&mut LexBuffer {
+            mode: LexingState::Normal,
+            buffer: String::new(),
+            current_line: 0,
+            current_column: 0,
+            token_column_marker: 0,
+        })
+    }
+
+    // Actual lexer tests
 
     #[test]
     fn test_lexer_single_tokens() {
         token_lexes_to("let", Let);
         token_lexes_to("fun", Fun);
         token_lexes_to("=", Equals);
-        token_lexes_to("foo",Identifier("foo".to_string()));
+        token_lexes_to("foo", Identifier("foo".to_string()));
         for nmbr in 0..100 {
-            token_lexes_to(&nmbr.to_string(),Integer(nmbr));
+            token_lexes_to(&nmbr.to_string(), Integer(nmbr));
         }
         token_lexes_to("\"\"", Str("".to_string()));
         token_lexes_to("\"foo\"", Str("foo".to_string()));
@@ -236,6 +248,7 @@ mod tests {
         token_lexes_to("->", Arrow);
         token_lexes_to("-", Minus);
         token_lexes_to("+", Plus);
+        token_lexes_to(",", Comma);
     }
 
     #[test]
@@ -261,6 +274,28 @@ mod tests {
             dummy_token(RightParens),
             dummy_token(Semicolon),
         ]);
+        with_input_lexes_to("call(a, b, c);", vec![
+            dummy_token(Identifier("call".to_string())),
+            dummy_token(LeftParens),
+            dummy_token(Identifier("a".to_string())),
+            dummy_token(Comma),
+            dummy_token(Identifier("b".to_string())),
+            dummy_token(Comma),
+            dummy_token(Identifier("c".to_string())),
+            dummy_token(RightParens),
+            dummy_token(Semicolon),
+        ]);
+        with_input_lexes_to("call(a,b,c);", vec![
+            dummy_token(Identifier("call".to_string())),
+            dummy_token(LeftParens),
+            dummy_token(Identifier("a".to_string())),
+            dummy_token(Comma),
+            dummy_token(Identifier("b".to_string())),
+            dummy_token(Comma),
+            dummy_token(Identifier("c".to_string())),
+            dummy_token(RightParens),
+            dummy_token(Semicolon),
+        ]);
     }
 
     #[test]
@@ -273,26 +308,38 @@ mod tests {
                 token_at(Equals, 1, 8),
                 token_at(Integer(1), 1, 10),
                 token_at(Semicolon, 1, 11),
-
                 token_at(Let, 2, 0),
                 token_at(Identifier("bar".to_string()), 2, 4),
                 token_at(Equals, 2, 8),
                 token_at(Str("bar value with whitespace".to_string()), 2, 10),
                 token_at(Semicolon, 2, 37),
-            ]
+            ],
         )
-
-        // Problems
-        // ;;;;; makes invalid column reference
     }
 
     #[test]
     fn test_interesting_corner_cases() {
         with_input_lexes_to(
+            "1 + 2",
+            vec![
+                dummy_token(Integer(1)),
+                dummy_token(Plus),
+                dummy_token(Integer(2)),
+            ],
+        );
+        with_input_lexes_to(
+            "1+2",
+            vec![
+                dummy_token(Integer(1)),
+                dummy_token(Plus),
+                dummy_token(Integer(2)),
+            ],
+        );
+        with_input_lexes_to(
             "\"let a = 1\"",
             vec![
                 dummy_token(Str("let a = 1".to_string())),
-            ]
+            ],
         );
         with_input_lexes_to(
             "let\n a\n = \n1;",
@@ -302,7 +349,7 @@ mod tests {
                 dummy_token(Equals),
                 dummy_token(Integer(1)),
                 dummy_token(Semicolon),
-            ]
+            ],
         );
         with_input_lexes_to(
             "let foo;let bar;",
@@ -313,7 +360,7 @@ mod tests {
                 dummy_token(Let),
                 dummy_token(Identifier("bar".to_string())),
                 dummy_token(Semicolon),
-            ]
+            ],
         );
         with_input_lexes_to(
             "call(1);ball(2);",
@@ -328,7 +375,7 @@ mod tests {
                 dummy_token(Integer(2)),
                 dummy_token(RightParens),
                 dummy_token(Semicolon),
-            ]
+            ],
         );
     }
 
@@ -388,14 +435,13 @@ mod tests {
     /// Creates a token that can be used as a reference in tests
     /// It adds offset to 0, which means that expected column is the one given
     fn token_at(kind: TokenKind, line: u32, column: u32) -> Token {
-        create_token(kind, line, column, 0)
+        create_token(kind, line, column)
     }
 
     /// Creates dummy token, with source references zeroed
     /// Cannot be used for assertions with line and column references but
     /// is much more fast to write
     fn dummy_token(kind: TokenKind) -> Token {
-        create_token(kind, 0, 0, 0)
+        create_token(kind, 0, 0)
     }
-
 }
