@@ -1,20 +1,25 @@
 use crate::lexer::tokens::{Token, TokenKind, create_token, SourceRef};
 use core::fmt;
+use crate::lexer::ShouldContinue::{BailOut, Continue};
 
 mod tokens;
 
+/// Consumable lexer instance, create with create_lexer()
 pub struct Lexer {
     tokens: Vec<Token>,
     pointer: usize,
 }
 
 impl Lexer {
+
+    /// Advances lexer and returns next token
     pub fn next(&mut self) -> Option<&Token> {
         let token = self.tokens.get(self.pointer);
         self.pointer += 1;
         token
     }
 
+    /// Tells if lexer has next token
     pub fn has_next(&self) -> bool {
         if self.tokens.is_empty() {
             return false;
@@ -23,6 +28,7 @@ impl Lexer {
     }
 }
 
+// An Error that happens during lexing
 pub struct LexingError {
     msg: String,
     location: SourceRef,
@@ -35,15 +41,8 @@ impl fmt::Display for LexingError {
 }
 
 /// Creates consumable lexer for given input
+/// This is the entrypoint to lexer module
 pub fn create_lexer(source: &str) -> Result<Lexer, LexingError> {
-    let tokens = lex_source(source)?;
-    Ok(Lexer {
-        pointer: 0,
-        tokens,
-    })
-}
-
-fn lex_source(source: &str) -> Result<Vec<Token>, LexingError> {
     let mut tokens: Vec<Token> = vec![];
     let mut buffer = LexBuffer {
         mode: LexingState::Normal,
@@ -55,13 +54,18 @@ fn lex_source(source: &str) -> Result<Vec<Token>, LexingError> {
     };
     let mut character_iter = source.chars().peekable();
     while let Some(char) = character_iter.next() {
+        // This forwards LexingError
         if let Some(token) = buffer.push_char(char, character_iter.peek())? {
             tokens.push(token);
         }
     }
-    Ok(tokens)
+    Ok(Lexer {
+        pointer: 0,
+        tokens,
+    })
 }
 
+/// State enum for lexer. Lexer behaves differently in different modes
 #[derive(PartialEq)]
 enum LexingState {
     Normal,
@@ -70,7 +74,7 @@ enum LexingState {
     LineComment,
 }
 
-/// LexBuffer is used for lexing the given input statefully
+/// LexBuffer is used for stateful lexing the given input
 struct LexBuffer {
     buffer: String,
     mode: LexingState,
@@ -80,158 +84,245 @@ struct LexBuffer {
     string_escape_flag: bool,
 }
 
+/// Utility enum for LexBuffer, for determining whether lexer should
+/// proceed to next stage with current_character
+enum ShouldContinue {
+    Continue,
+    BailOut,
+}
+
 impl LexBuffer {
-    fn pop_buffer(&mut self, kind: TokenKind) -> Token {
-        self.buffer.clear();
-        let new_token = create_token(kind,
-                                     self.current_line,
-                                     self.token_column_marker);
-        self.token_column_marker = self.current_column;
-        new_token
-    }
 
-    fn pop_buffer_cond(
-        &mut self,
-        kind: TokenKind,
-        peek: Option<&char>,
-        cond: fn(&char) -> bool) -> Result<Option<Token>, LexingError> {
-        match peek {
-            None => Ok(Some(self.pop_buffer(kind))),
-            Some(peek) => {
-                if cond(peek) {
-                    return Ok(Some(self.pop_buffer(kind)));
-                }
-                Ok(None)
-            }
-        }
-    }
-
+    /// Pushes character to buffer.
+    /// Returns Some(Token) if push makes new token ready. Returns None if
+    /// Lexer expects more input
     fn push_char(&mut self, current_char: char, peek: Option<&char>) -> Result<Option<Token>, LexingError> {
-        self.current_column += 1;
-        if current_char == '\n' {
-            if self.mode == LexingState::LineComment {
-                self.mode = LexingState::Normal
-            }
-            self.current_line += 1;
-            self.current_column = 0;
-            self.token_column_marker = 0;
+
+        // Increment counters
+        if let BailOut = self.proceed_with_counters(&current_char) {
             return Ok(None);
         }
 
-        match current_char {
-            _ if self.mode == LexingState::LineComment => (),
-            _ if self.string_escape_flag == true => {
-                // This should check that next is actually escapable
-                self.buffer.push(current_char);
-                self.string_escape_flag = false;
-                return Ok(None);
-            }
-            _ if current_char == '/' && *peek.unwrap_or(&' ') == '/' && self.mode == LexingState::Normal => {
-                self.mode = LexingState::LineComment;
-                return Ok(None);
-            }
-            _ if self.mode != LexingState::String && current_char.is_whitespace() => {
-                self.token_column_marker += 1;
-                return Ok(None);
-            }
-            _ if self.buffer.is_empty() && current_char.is_digit(10) => {
-                self.mode = LexingState::Integer;
-                self.buffer.push(current_char);
-            }
-            _ if self.buffer.is_empty() && self.mode != LexingState::String && current_char == '"' => {
-                self.mode = LexingState::String;
-                return Ok(None);
-            }
-            _ if self.mode == LexingState::String && current_char == '\\' => {
-                self.string_escape_flag = true;
-                return Ok(None);
-            }
-            _ if self.mode == LexingState::String && current_char == '"' => {}
-            _ if self.mode == LexingState::String && peek.is_none() => {
-                return Err(LexingError {
-                    msg: "string is not terminated".to_string(),
-                    location: SourceRef {
-                        line: self.current_line,
-                        column: self.token_column_marker,
-                    }
-                });
-            }
-            _ => {
-                self.buffer.push(current_char);
-            }
+        // Fill buffers and bail out if necessary
+        if let BailOut = self.fill_buffer(&current_char, peek) {
+            return Ok(None);
         }
 
+        // If something is ready, pop new token out
         match self.mode {
+
+            // This just has to be here, fill_buffer already BailsOut in LineComment mode
             LexingState::LineComment => {
                 Ok(None)
             }
+
+            //
             LexingState::Integer => {
-                let value_to_be = self.buffer.parse();
-                if value_to_be.is_err() {
-                    return Err(LexingError {
-                        msg: "identifier can't start with digit".to_string(),
-                        location: SourceRef {
-                            line: self.current_line,
-                            column: self.token_column_marker,
+                if is_delimiting_opt(peek) {
+                    let value: Result<i32, _> = self.buffer.parse();
+                    return match value {
+                        Ok(value) => {
+                            // self.mode = LexingState::Normal;
+                            Ok(Some(self.pop_buffer(TokenKind::Integer(value))))
                         }
-                    })
-                }
-                let value_to_be = value_to_be.unwrap();
-                let ready = self.pop_buffer_cond(TokenKind::Integer(value_to_be),
-                                                 peek,
-                                                 |peek| is_delimiting(peek))?;
-                if ready.is_some() {
-                    self.mode = LexingState::Normal;
-                }
-                Ok(ready)
-            }
-            LexingState::String => {
-                if current_char == '"' {
-                    self.mode = LexingState::Normal;
-                    return Ok(Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string()))));
+                        Err(_) => Err(LexingError {
+                            msg: "identifier can't start with digit".to_string(),
+                            location: SourceRef {
+                                line: self.current_line,
+                                column: self.token_column_marker,
+                            },
+                        })
+                    };
                 }
                 Ok(None)
             }
+
+            LexingState::String => {
+                if current_char == '"' {
+                    // self.mode = LexingState::Normal;
+                    return Ok(Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string()))));
+                }
+                if peek.is_none() {
+                    return Err(LexingError {
+                        msg: "string is not terminated".to_string(),
+                        location: SourceRef {
+                            line: self.current_line,
+                            column: self.token_column_marker,
+                        },
+                    });
+                }
+                Ok(None)
+            }
+
             LexingState::Normal => {
                 match self.buffer.as_str() {
-                    "let" => self.pop_buffer_cond(
+
+                    // match reserved words and operators
+
+                    "let" => Ok(self.pop_buffer_cond(
                         TokenKind::Let,
-                        peek,
-                        |peek| is_delimiting(peek)),
-                    "fun" => self.pop_buffer_cond(
+                        is_delimiting_opt(peek))),
+                    "fun" => Ok(self.pop_buffer_cond(
                         TokenKind::Fun,
-                        peek,
-                        |peek| is_delimiting(peek)),
+                        is_delimiting_opt(peek))),
                     "(" => Ok(Some(self.pop_buffer(TokenKind::LeftParens))),
                     ")" => Ok(Some(self.pop_buffer(TokenKind::RightParens))),
                     "," => Ok(Some(self.pop_buffer(TokenKind::Comma))),
-                    "-" => self.pop_buffer_cond(
+                    "-" => Ok(self.pop_buffer_cond(
                         TokenKind::Minus,
-                        peek,
-                        |peek| *peek != '>'),
+                        char_is_not(peek, '>'))),
                     "+" => Ok(Some(self.pop_buffer(TokenKind::Plus))),
                     "/" => Ok(Some(self.pop_buffer(TokenKind::Division))),
                     "->" => Ok(Some(self.pop_buffer(TokenKind::Arrow))),
                     ";" => Ok(Some(self.pop_buffer(TokenKind::Semicolon))),
-                    "=" => self.pop_buffer_cond(
+                    "=" => Ok(self.pop_buffer_cond(
                         TokenKind::Assign,
-                        peek,
-                        |peek| *peek != '='),
+                        char_is_not(peek, '='))),
                     "==" => Ok(Some(self.pop_buffer(TokenKind::Equals))),
-                    // KLUDGE: this will actually MAKE a token even if it's not used
-                    // Should be refactored to returning token from peek fn
-                    _ => self.pop_buffer_cond(
-                        TokenKind::Identifier(self.buffer.to_string()),
-                        peek,
-                        |peek| is_delimiting(peek),
-                    )
+
+                    // Match identifiers
+
+                    _ => {
+                        if is_delimiting_opt(peek) {
+                            let token_kind = TokenKind::Identifier(self.buffer.to_string());
+                            let token = self.pop_buffer(token_kind);
+                            return Ok(Some(token));
+                        }
+                        Ok(None)
+                    }
                 }
             }
         }
     }
+
+    /// Increments the counters and resets LineComment mode if newline is encountered
+    /// Returns BailOut, if current_char was newline and thus OK(None) should be returned
+    fn proceed_with_counters(&mut self, current_char: &char) -> ShouldContinue {
+        self.current_column += 1;
+        match current_char {
+            '\n' => {
+                if self.mode == LexingState::LineComment {
+                    self.mode = LexingState::Normal
+                }
+                self.current_line += 1;
+                self.current_column = 0;
+                self.token_column_marker = 0;
+                BailOut
+            },
+            _ => Continue
+        }
+    }
+
+    /// Fills buffer according to current state of the lexer
+    /// Returns BailOut if Ok(None) should be returned (no token from this character)
+    /// fill_buffer also changes LexingMode when required
+    fn fill_buffer(&mut self, current_char: &char, peek: Option<&char>) -> ShouldContinue {
+        match self.mode {
+
+            // In LineComment mode, just BailOut always
+            LexingState::LineComment => BailOut,
+
+            // In Normal mode
+            LexingState::Normal => match current_char {
+                // Whitespace encountered, proceed to next column_marker and BailOut
+                _ if current_char.is_whitespace() => {
+                    self.token_column_marker += 1;
+                    BailOut
+                }
+                // New line comment starts from this character
+                _ if *current_char == '/' && char_is(peek, '/') => {
+                    self.mode = LexingState::LineComment;
+                    BailOut
+                }
+                // New integer starts when buffer is empty and currect_character is digit
+                // Needs to Continue, because it can be an integer with just one digit
+                _ if self.buffer.is_empty() && current_char.is_digit(10) => {
+                    self.mode = LexingState::Integer;
+                    self.buffer.push(*current_char);
+                    Continue
+                }
+                // New string starts, note that " is not pushed to buffer
+                _ if self.buffer.is_empty() && *current_char == '"' => {
+                    self.mode = LexingState::String;
+                    BailOut
+                }
+                // Just push to buffer and Continue
+                _ => {
+                    self.buffer.push(*current_char);
+                    Continue
+                }
+            },
+
+            // In String mode
+            LexingState::String => match current_char {
+                // Escape flag encountered in string, set flag on and BailOut
+                _ if self.string_escape_flag => {
+                    // Escape flag was on, push this to buffer and BailOut because we're
+                    // in between on String
+                    self.buffer.push(*current_char);
+                    self.string_escape_flag = false;
+                    BailOut
+                }
+                // Escape flag is set encountered, set flag on and BailOut
+                _ if !self.string_escape_flag && *current_char == '\\' => {
+                    self.string_escape_flag = true;
+                    BailOut
+                }
+                // In String mode when " is encountered, just Continue and new String will
+                // pop out
+                _ if *current_char == '"' => Continue,
+                // Just push character to buffer and continue
+                // Continue is required because peek can be None (EOF) and
+                // it must raise an error
+                _ => {
+                    self.buffer.push(*current_char);
+                    Continue
+                }
+            },
+
+            // In Integer mode just push to buffer always
+            // Continue will check if the Integer is malformed (TODO or promoted to float)
+            LexingState::Integer => {
+                self.buffer.push(*current_char);
+                Continue
+            }
+        }
+    }
+
+    /// Pops Token out of buffer with given kind and resets
+    /// column markers and mode back to Normal
+    fn pop_buffer(&mut self, kind: TokenKind) -> Token {
+
+        // back to normal
+        self.mode = LexingState::Normal;
+        self.buffer.clear();
+
+        // Create token with token_column_marker (the column that started token)
+        let new_token = create_token(kind,
+                                     self.current_line,
+                                     self.token_column_marker);
+
+        // Set next token column marker to current_column
+        self.token_column_marker = self.current_column;
+
+        new_token
+    }
+
+    /// Pops buffer to given kind if should_pop is true
+    fn pop_buffer_cond(
+        &mut self,
+        kind: TokenKind,
+        should_pop: bool) -> Option<Token> {
+        if should_pop {
+            return Some(self.pop_buffer(kind));
+        }
+        None
+    }
+
 }
 
-
+/// Tells if given character is delimiting
+/// for example foo(.. creates two tokens: identifier and ( token.
 fn is_delimiting(c: &char) -> bool {
     match c {
         _ if c.is_whitespace() => true,
@@ -245,6 +336,26 @@ fn is_delimiting(c: &char) -> bool {
         '=' => true,
         _ => false
     }
+}
+
+// Wrapper for Option to check if char is delimiting
+// Note that None is delimiting, because character of None is EOF
+fn is_delimiting_opt(c: Option<&char>) -> bool {
+    match c {
+        Some(char) => is_delimiting(char),
+        None => true,
+    }
+}
+
+fn char_is(peek: Option<&char>, this: char) -> bool {
+    match peek {
+        Some(peek_char) => *peek_char == this,
+        None => false
+    }
+}
+
+fn char_is_not(peek: Option<&char>, this: char) -> bool {
+    !char_is(peek, this)
 }
 
 #[cfg(test)]
@@ -420,21 +531,21 @@ mod tests {
             location: SourceRef {
                 line: 1,
                 column: 3,
-            }
+            },
         });
         with_input_errors_to("\"hello", LexingError {
             msg: "string is not terminated".to_string(),
             location: SourceRef {
                 line: 1,
                 column: 3,
-            }
+            },
         });
         with_input_errors_to("\"hello // comment", LexingError {
             msg: "string is not terminated".to_string(),
             location: SourceRef {
                 line: 1,
                 column: 3,
-            }
+            },
         });
     }
 
@@ -581,7 +692,7 @@ mod tests {
                     }
                 }
                 assert!(!lexer.has_next(), "lexer had more tokens after expected!")
-            },
+            }
             Err(error) => panic!("Unexpected lexing error: {}", error.msg)
         }
     }
