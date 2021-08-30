@@ -19,6 +19,10 @@ impl Lexer {
         token
     }
 
+    pub fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.pointer)
+    }
+
     /// Tells if lexer has next token
     pub fn has_next(&self) -> bool {
         if self.tokens.is_empty() {
@@ -401,6 +405,36 @@ mod tests {
             token_column_marker: 0,
             string_escape_flag: false,
         })
+    }
+
+    // Testing lexer usage
+
+    #[test]
+    fn test_lexer_usage() {
+        match create_lexer("let a = 1;") {
+            Ok(mut lexer) => {
+                assert!(lexer.has_next());
+                assert_eq!(lexer.peek().unwrap().token_kind, Let);
+                assert_eq!(lexer.next().unwrap().token_kind, Let);
+                assert_eq!(lexer.peek().unwrap().token_kind, Identifier("a".to_string()));
+
+                assert_eq!(lexer.next().unwrap().token_kind, Identifier("a".to_string()));
+                assert_eq!(lexer.peek().unwrap().token_kind, Assign);
+
+                assert_eq!(lexer.next().unwrap().token_kind, Assign);
+                assert_eq!(lexer.peek().unwrap().token_kind, Integer(1));
+
+                assert_eq!(lexer.next().unwrap().token_kind, Integer(1));
+                assert_eq!(lexer.peek().unwrap().token_kind, Semicolon);
+
+                assert_eq!(lexer.next().unwrap().token_kind, Semicolon);
+
+                assert!(lexer.peek().is_none());
+                assert!(lexer.next().is_none());
+            },
+            Err(error) => panic!("create_lexer did not work: {}", error.msg)
+        }
+
     }
 
     // Actual lexer tests
