@@ -27,10 +27,7 @@ impl Lexer {
 
     /// Tells if lexer has next token
     pub fn has_next(&self) -> bool {
-        if self.tokens.is_empty() {
-            return false;
-        }
-        self.pointer <= self.tokens.len() - 1
+        self.pointer + 1 <= self.tokens.len()
     }
 }
 
