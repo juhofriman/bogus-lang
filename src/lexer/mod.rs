@@ -10,6 +10,7 @@ pub struct Lexer {
     pointer: usize,
 }
 
+#[allow(dead_code)]
 impl Lexer {
 
     /// Advances lexer and returns next token
@@ -19,6 +20,7 @@ impl Lexer {
         token
     }
 
+    /// Peeks next token without advancing the lexer
     pub fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.pointer)
     }
@@ -165,6 +167,9 @@ impl LexBuffer {
 
                     "let" => Ok(self.pop_buffer_cond(
                         TokenKind::Let,
+                        is_delimiting_opt(peek))),
+                    "const" => Ok(self.pop_buffer_cond(
+                        TokenKind::Const,
                         is_delimiting_opt(peek))),
                     "fun" => Ok(self.pop_buffer_cond(
                         TokenKind::Fun,
@@ -366,7 +371,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const};
 
     // Internal implementation test helpers
 
@@ -442,6 +447,7 @@ mod tests {
     #[test]
     fn test_lexer_single_tokens() {
         token_lexes_to("let", Let);
+        token_lexes_to("const", Const);
         token_lexes_to("fun", Fun);
         token_lexes_to("=", Assign);
         token_lexes_to("==", Equals);
@@ -481,6 +487,20 @@ mod tests {
         ]);
         with_input_lexes_to("let a=1;", vec![
             dummy_token(Let),
+            dummy_token(Identifier("a".to_string())),
+            dummy_token(Assign),
+            dummy_token(Integer(1)),
+            dummy_token(Semicolon),
+        ]);
+        with_input_lexes_to("const a = 1;", vec![
+            dummy_token(Const),
+            dummy_token(Identifier("a".to_string())),
+            dummy_token(Assign),
+            dummy_token(Integer(1)),
+            dummy_token(Semicolon),
+        ]);
+        with_input_lexes_to("const a=1;", vec![
+            dummy_token(Const),
             dummy_token(Identifier("a".to_string())),
             dummy_token(Assign),
             dummy_token(Integer(1)),

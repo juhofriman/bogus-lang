@@ -39,6 +39,7 @@ impl Display for SourceRef {
 pub enum TokenKind {
     // Reserved words
     Let,
+    Const,
     Fun,
 
     // Operators
