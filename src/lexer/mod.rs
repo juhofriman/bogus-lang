@@ -126,7 +126,6 @@ impl LexBuffer {
                     let value: Result<i32, _> = self.buffer.parse();
                     return match value {
                         Ok(value) => {
-                            // self.mode = LexingState::Normal;
                             Ok(Some(self.pop_buffer(TokenKind::Integer(value))))
                         }
                         Err(_) => Err(LexingError {
@@ -146,7 +145,6 @@ impl LexBuffer {
                     let value: Result<f32, _> = self.buffer.parse();
                     return match value {
                         Ok(value) => {
-                            // self.mode = LexingState::Normal;
                             Ok(Some(self.pop_buffer(TokenKind::Float(value))))
                         }
                         Err(_) => Err(LexingError {
@@ -163,7 +161,6 @@ impl LexBuffer {
 
             LexingState::String => {
                 if current_char == '"' {
-                    // self.mode = LexingState::Normal;
                     return Ok(Some(self.pop_buffer(TokenKind::Str(self.buffer.to_string()))));
                 }
                 if peek.is_none() {
