@@ -69,10 +69,11 @@ pub fn create_lexer(source: &str) -> Result<Lexer, LexingError> {
 }
 
 /// State enum for lexer. Lexer behaves differently in different modes
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum LexingState {
     Normal,
     Integer,
+    Float,
     String,
     LineComment,
 }
@@ -140,6 +141,26 @@ impl LexBuffer {
                 Ok(None)
             }
 
+            LexingState::Float => {
+                if is_delimiting_opt(peek) {
+                    let value: Result<f32, _> = self.buffer.parse();
+                    return match value {
+                        Ok(value) => {
+                            // self.mode = LexingState::Normal;
+                            Ok(Some(self.pop_buffer(TokenKind::Float(value))))
+                        }
+                        Err(_) => Err(LexingError {
+                            msg: "identifier can't start with digit".to_string(),
+                            location: SourceRef {
+                                line: self.current_line,
+                                column: self.token_column_marker,
+                            },
+                        })
+                    };
+                }
+                Ok(None)
+            }
+
             LexingState::String => {
                 if current_char == '"' {
                     // self.mode = LexingState::Normal;
@@ -174,6 +195,7 @@ impl LexBuffer {
                     "(" => Ok(Some(self.pop_buffer(TokenKind::LeftParens))),
                     ")" => Ok(Some(self.pop_buffer(TokenKind::RightParens))),
                     "," => Ok(Some(self.pop_buffer(TokenKind::Comma))),
+                    "." => Ok(Some(self.pop_buffer(TokenKind::Dot))),
                     "-" => Ok(self.pop_buffer_cond(
                         TokenKind::Minus,
                         char_is_not(peek, '>'))),
@@ -240,11 +262,18 @@ impl LexBuffer {
                     self.mode = LexingState::LineComment;
                     BailOut
                 }
-                // New integer starts when buffer is empty and currect_character is digit
+                // New integer starts when buffer is empty and current_character is digit
                 // Needs to Continue, because it can be an integer with just one digit
                 _ if self.buffer.is_empty() && current_char.is_digit(10) => {
                     self.mode = LexingState::Integer;
                     self.buffer.push(*current_char);
+                    // Handle the situation where float has one digit and thus
+                    // it must go to Float mode directly. I.e 1.12
+                    if char_is(peek, '.') {
+                        self.mode = LexingState::Float;
+                        // BailOut because we don't want to pop integer out now
+                        return BailOut
+                    }
                     Continue
                 }
                 // New string starts, note that " is not pushed to buffer
@@ -275,7 +304,7 @@ impl LexBuffer {
                     BailOut
                 }
                 // In String mode when " is encountered, just Continue and new String will
-                // pop out
+                // pop out. The character is not pushed to buffer because it's not part of the data.
                 '"' => Continue,
                 // Just push character to buffer and continue
                 // Continue is required because peek can be None (EOF) and
@@ -287,10 +316,23 @@ impl LexBuffer {
             },
 
             // In Integer mode just push to buffer always
-            // Continue will check if the Integer is malformed (TODO or promoted to float)
+            // Continue will check if the Integer is malformed
             LexingState::Integer => {
                 self.buffer.push(*current_char);
+                // Promote to float mode and BailOut because no Integer must be popped
+                if char_is(peek, '.') {
+                    self.mode = LexingState::Float;
+                    return BailOut
+                }
                 Continue
+            }
+
+            // In Float mode just push to buffer always
+            LexingState::Float => match current_char {
+                _ => {
+                    self.buffer.push(*current_char);
+                    Continue
+                }
             }
         }
     }
@@ -339,6 +381,7 @@ fn is_delimiting(c: &char) -> bool {
         '-' => true,
         '/' => true,
         ',' => true,
+        '.' => true,
         '=' => true,
         _ => false
     }
@@ -368,7 +411,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot};
 
     // Internal implementation test helpers
 
@@ -452,6 +495,8 @@ mod tests {
         for nmbr in 0..100 {
             token_lexes_to(&nmbr.to_string(), Integer(nmbr));
         }
+        token_lexes_to("1.12", Float(1.12));
+        token_lexes_to("124.99", Float(124.99));
         token_lexes_to("\"\"", Str("".to_string()));
         token_lexes_to("\"foo\"", Str("foo".to_string()));
         token_lexes_to(";", Semicolon);
@@ -462,6 +507,7 @@ mod tests {
         token_lexes_to("+", Plus);
         token_lexes_to("/", Division);
         token_lexes_to(",", Comma);
+        token_lexes_to(".", Dot);
     }
 
     #[test]
@@ -536,6 +582,14 @@ mod tests {
             dummy_token(Identifier("b".to_string())),
             dummy_token(Comma),
             dummy_token(Identifier("c".to_string())),
+            dummy_token(RightParens),
+            dummy_token(Semicolon),
+        ]);
+        with_input_lexes_to("foo.do();", vec![
+            dummy_token(Identifier("foo".to_string())),
+            dummy_token(Dot),
+            dummy_token(Identifier("do".to_string())),
+            dummy_token(LeftParens),
             dummy_token(RightParens),
             dummy_token(Semicolon),
         ]);

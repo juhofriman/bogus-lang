@@ -52,6 +52,7 @@ pub enum TokenKind {
 
     // Delimiters
     Comma,
+    Dot,
     Semicolon,
     LeftParens,
     RightParens,
@@ -61,6 +62,7 @@ pub enum TokenKind {
 
     // Literals
     Integer(i32),
+    Float(f32),
     Str(String),
 }
 
