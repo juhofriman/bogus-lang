@@ -236,7 +236,7 @@ impl LexBuffer {
                     BailOut
                 }
                 // New line comment starts from this character
-                _ if *current_char == '/' && char_is(peek, '/') => {
+                '/' if char_is(peek, '/') => {
                     self.mode = LexingState::LineComment;
                     BailOut
                 }
@@ -248,7 +248,7 @@ impl LexBuffer {
                     Continue
                 }
                 // New string starts, note that " is not pushed to buffer
-                _ if self.buffer.is_empty() && *current_char == '"' => {
+                '"' if self.buffer.is_empty() => {
                     self.mode = LexingState::String;
                     BailOut
                 }
@@ -270,13 +270,13 @@ impl LexBuffer {
                     BailOut
                 }
                 // Escape flag is set encountered, set flag on and BailOut
-                _ if !self.string_escape_flag && *current_char == '\\' => {
+                '\\' if !self.string_escape_flag => {
                     self.string_escape_flag = true;
                     BailOut
                 }
                 // In String mode when " is encountered, just Continue and new String will
                 // pop out
-                _ if *current_char == '"' => Continue,
+                '"' => Continue,
                 // Just push character to buffer and continue
                 // Continue is required because peek can be None (EOF) and
                 // it must raise an error
