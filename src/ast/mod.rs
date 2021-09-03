@@ -3,110 +3,127 @@ struct EvalError {
     msg: String,
 }
 
-// Hmm, dunno if this is good...
-fn cant_apply_err<T: Value + ?Sized, U: Value + ?Sized>(operator: &str, left: &T, right: &U) -> EvalError {
-    EvalError {
-        msg: format!("Can't apply {} {} {}", left.name(), operator, right.name())
-    }
+trait Expression {
+    fn evaluate(&self) -> Result<Box<Value>, EvalError>;
 }
 
-#[derive(PartialEq, Debug)]
-enum TypeMatcher<'a> {
-    Integer(&'a u32),
-    String(&'a String),
-    Void,
+trait Operable {
+    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError>;
 }
 
-trait Value {
-    fn type_matcher(&self) -> TypeMatcher;
-    fn name(&self) -> &str {
-        match self.type_matcher() {
-            TypeMatcher::Integer(_) => "Integer",
-            TypeMatcher::String(_) => "String",
-            TypeMatcher::Void => "Void",
+#[derive(Debug, PartialEq, Clone)]
+enum Value {
+    Integer(u32),
+    String(String),
+
+    Null,
+}
+
+impl Value {
+    fn name(&self) -> &'static str {
+        match self {
+            Value::Integer(_) => "Integer",
+            Value::String(_) => "String",
+            Value::Null => "Null",
         }
     }
 }
 
-trait Operable: Value {
-    fn apply_plus<T: Value>(&self, other: &T) -> Result<Box<dyn Value>, EvalError> {
-        // By default, return can't apply error
-        Err(cant_apply_err("+", self, other))
+impl Expression for Value {
+    fn evaluate(&self) -> Result<Box<Value>, EvalError> {
+        Ok(Box::new(self.clone()))
     }
 }
 
-// VOID
-
-struct VoidValue;
-
-impl Value for VoidValue {
-    fn type_matcher(&self) -> TypeMatcher {
-        TypeMatcher::Void
+impl Operable for Value {
+    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
+        Ok(matcher_from_value(self).apply_plus(other)?)
     }
 }
 
-impl Operable for VoidValue {}
-
-// INTEGER
-
-struct IntegerValue {
-    value: u32,
-}
-
-impl Value for IntegerValue {
-    fn type_matcher(&self) -> TypeMatcher {
-        TypeMatcher::Integer(&self.value)
+fn matcher_from_value(value: &Value) -> Box<dyn OperatorApplyMatcher + '_> {
+    match value {
+        Value::Integer(value) => Box::new(Matcher { value }),
+        _ => Box::new(FailingMatcher { wrapped_type: value.name() }),
     }
 }
 
-impl Operable for IntegerValue {
-    fn apply_plus<T: Value>(&self, other: &T) -> Result<Box<dyn Value>, EvalError> {
-        match other.type_matcher() {
-            TypeMatcher::Integer(other_val) =>
-                Ok(Box::new(IntegerValue { value: self.value + other_val })),
-            TypeMatcher::String(other_val) => {
-                let mut new_string = String::new();
-                new_string.push_str(self.value.to_string().as_str());
-                new_string.push_str(other_val.as_str());
-                Ok(Box::new(StringValue { value: new_string }))
-            },
-            _ => Err(cant_apply_err("+", self, other))
+////////////////////////////
+
+trait OperatorApplyMatcher {
+
+    fn name(&self) -> &'static str;
+
+    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
+        match other {
+            Value::Integer(val) => self.apply_plus_with_integer(val),
+            Value::String(val) => self.apply_plus_with_string(val),
+            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.name()) })
         }
     }
-}
+    fn apply_plus_with_integer(&self, _other: &u32) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Integer") })
+    }
 
-
-// STRING
-
-struct StringValue {
-    value: String,
-}
-
-impl Value for StringValue {
-    fn type_matcher(&self) -> TypeMatcher {
-        TypeMatcher::String(&self.value)
+    fn apply_plus_with_string(&self, _other: &String) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Integer") })
     }
 }
 
-impl Operable for StringValue {
-    fn apply_plus<T: Value>(&self, other: &T) -> Result<Box<dyn Value>, EvalError> {
-        match other.type_matcher() {
-            TypeMatcher::String(other_val) => {
-                let mut new_string = String::new();
-                new_string.push_str(self.value.as_str());
-                new_string.push_str(other_val.as_str());
-                Ok(Box::new(StringValue { value: new_string }))
-            },
-            TypeMatcher::Integer(other_val) => {
-                let mut new_string = String::new();
-                new_string.push_str(self.value.as_str());
-                new_string.push_str(other_val.to_string().as_str());
-                Ok(Box::new(StringValue { value: new_string }))
-            },
-            _ => Err(cant_apply_err("+", self, other))
-        }
+struct Matcher<'a, T> {
+    value: &'a T,
+}
+
+impl OperatorApplyMatcher for Matcher<'_, u32> {
+    fn name(&self) -> &'static str {
+        "Integer"
+    }
+
+    fn apply_plus_with_integer(&self, other: &u32) -> Result<Value, EvalError> {
+        Ok(Value::Integer(self.value + other))
+    }
+    fn apply_plus_with_string(&self, other: &String) -> Result<Value, EvalError> {
+        let mut new = String::new();
+        new.push_str(self.value.to_string().as_str());
+        new.push_str(other.as_str());
+        Ok(Value::String(new))
     }
 }
+
+// Tämä niinkuin nullille ja funkkarille
+struct FailingMatcher {
+    wrapped_type: &'static str,
+}
+
+impl OperatorApplyMatcher for FailingMatcher {
+    fn name(&self) -> &'static str {
+        self.wrapped_type
+    }
+
+    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), other.name()) })
+    }
+}
+
+/////////////////////////////
+
+
+
+
+struct PlusExpression {
+    left: Box<dyn Expression>,
+    right: Box<dyn Expression>,
+}
+
+impl Expression for PlusExpression {
+    fn evaluate(&self) -> Result<Box<Value>, EvalError> {
+        let left_res = self.left.evaluate()?;
+        let right_res = self.right.evaluate()?;
+        let result = left_res.apply_plus(&right_res)?;
+        Ok(Box::new(result))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -114,66 +131,65 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_void_plus_something() {
-        let val_void = VoidValue {};
-        let val_int = IntegerValue { value: 123 };
-        let val_string = StringValue { value: "foo".to_string() };
-
-        eval_fails(val_void.apply_plus(&val_int), "Can't apply Void + Integer");
-        eval_fails(val_int.apply_plus(&val_void), "Can't apply Integer + Void");
-
-        eval_fails(val_string.apply_plus(&val_void), "Can't apply String + Void");
-        eval_fails(val_void.apply_plus(&val_string), "Can't apply Void + String");
+    fn test_evaluate_value() {
+        let val = Value::Integer(1);
+        evals_to(val.evaluate(), Value::Integer(1));
+        let val = Value::String("hello".to_string());
+        evals_to(val.evaluate(), Value::String("hello".to_string()));
     }
 
     #[test]
     fn test_integer_plus_integer() {
-        let val1 = IntegerValue { value: 123 };
-        let val2 = IntegerValue { value: 1 };
-
-        evals_to(val1.apply_plus(&val2),
-                 TypeMatcher::Integer(&124));
-        evals_to(val2.apply_plus(&val1),
-                 TypeMatcher::Integer(&124));
-    }
-
-    #[test]
-    fn test_string_plus_string() {
-        let val1 = StringValue { value: "foo".to_string() };
-        let val2 = StringValue { value: "bar".to_string() };
-
-        evals_to(val1.apply_plus(&val2),
-                 TypeMatcher::String(&"foobar".to_string()));
-        evals_to(val2.apply_plus(&val1),
-                 TypeMatcher::String(&"barfoo".to_string()));
+        evals_to(PlusExpression {
+            left: Box::new(Value::Integer(1)),
+            right: Box::new(Value::Integer(1)),
+        }.evaluate(), Value::Integer(2));
     }
 
     #[test]
     fn test_integer_plus_string() {
-        let val1 = IntegerValue { value: 123 };
-        let val2 = StringValue { value: "bar".to_string() };
-
-        evals_to(val1.apply_plus(&val2),
-                 TypeMatcher::String(&"123bar".to_string()));
-        evals_to(val2.apply_plus(&val1),
-                 TypeMatcher::String(&"bar123".to_string()));
+        evals_to(PlusExpression {
+            left: Box::new(Value::Integer(1)),
+            right: Box::new(Value::String("foo".to_string())),
+        }.evaluate(), Value::String("1foo".to_string()));
     }
 
-    fn evals_to(result: Result<Box<dyn Value>, EvalError>, expected: TypeMatcher) {
+    #[test]
+    fn test_plus_fails() {
+        fails_to(PlusExpression {
+            left: Box::new(Value::Integer(1)),
+            right: Box::new(Value::Null),
+        }.evaluate(), "Can't apply Integer + Null");
+
+        fails_to(PlusExpression {
+            left: Box::new(Value::Null),
+            right: Box::new(Value::Integer(1)),
+        }.evaluate(), "Can't apply Null + Integer");
+    }
+
+    #[test]
+    fn test_nested_plus() {
+        let expr = PlusExpression {
+            left: Box::new(PlusExpression {
+                left: Box::new(Value::Integer(5)),
+                right: Box::new(Value::Integer(5)),
+            }),
+            right: Box::new(Value::Integer(1)),
+        };
+        evals_to(expr.evaluate(), Value::Integer(11));
+    }
+
+    fn evals_to(result: Result<Box<Value>, EvalError>, expected_val: Value) {
         match result {
-            Ok(result) => {
-                assert_eq!(result.type_matcher(), expected)
-            },
-            Err(err) => panic!("Expecting result, but gor EvalError: {}", err.msg)
+            Ok(received_val) => assert_eq!(*received_val, expected_val),
+            Err(err) => panic!("Expected value but got Err: {}", err.msg),
         }
     }
 
-    fn eval_fails(result: Result<Box<dyn Value>, EvalError>, msg: &str) {
+    fn fails_to(result: Result<Box<Value>, EvalError>, expecter_err: &str) {
         match result {
-            Ok(result) =>
-                panic!("Expected to eval to fail, but got: {:?}", result.type_matcher()),
-            Err(err) =>
-                assert_eq!(msg, err.msg)
+            Ok(received_val) => panic!("Expected Err but got Value: {:?}", received_val),
+            Err(err) => assert_eq!(err.msg, expecter_err)
         }
     }
 }
