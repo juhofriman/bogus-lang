@@ -14,4 +14,7 @@ impl OperatorApplyMatcher for Matcher<'_, i32> {
         new.push_str(other.as_str());
         Ok(Value::String(new))
     }
+    fn apply_minus_with_integer(&self, other: &i32) -> Result<Value, EvalError> {
+        Ok(Value::Integer(self.value - other))
+    }
 }

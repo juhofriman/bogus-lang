@@ -4,6 +4,7 @@ mod m_integer;
 mod m_string;
 mod m_null;
 mod e_plus;
+mod e_minus;
 
 /// Common error in evaluation
 #[derive(Debug)]
@@ -19,6 +20,7 @@ pub trait Expression {
 /// Operable gives possibility to apply operators. Operations return NEW Value.
 pub trait Operable {
     fn apply_plus(&self, other: &Value) -> Result<Value, EvalError>;
+    fn apply_minus(&self, other: &Value) -> Result<Value, EvalError>;
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -27,6 +29,7 @@ pub enum Value {
     String(String),
 
     Null,
+    Void,
 }
 
 impl Value {
@@ -35,6 +38,7 @@ impl Value {
             Value::Integer(_) => "Integer",
             Value::String(_) => "String",
             Value::Null => "Null",
+            Value::Void => "Void",
         }
     }
 }
@@ -50,6 +54,9 @@ impl Operable for Value {
     fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
         Ok(matcher_from_value(self).apply_plus(other)?)
     }
+    fn apply_minus(&self, other: &Value) -> Result<Value, EvalError> {
+        Ok(matcher_from_value(self).apply_minus(other)?)
+    }
 }
 
 pub trait OperatorApplyMatcher {
@@ -64,6 +71,16 @@ pub trait OperatorApplyMatcher {
             anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.name()) })
         }
     }
+
+    fn apply_minus(&self, other: &Value) -> Result<Value, EvalError> {
+        match other {
+            Value::Integer(val) => self.apply_minus_with_integer(val),
+            Value::String(val) => self.apply_minus_with_string(val),
+            Value::Null => self.apply_minus_with_null(),
+            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.name()) })
+        }
+    }
+
     fn apply_plus_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
         Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Integer") })
     }
@@ -74,6 +91,18 @@ pub trait OperatorApplyMatcher {
 
     fn apply_plus_with_null(&self) -> Result<Value, EvalError> {
         Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Null") })
+    }
+
+    fn apply_minus_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "Integer") })
+    }
+
+    fn apply_minus_with_string(&self, _other: &String) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "String") })
+    }
+
+    fn apply_minus_with_null(&self) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "Null") })
     }
 }
 
@@ -106,14 +135,10 @@ impl OperatorApplyMatcher for FailingMatcher {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::ast::tests::Expected::EvaluatesTo;
 
     pub enum Expected<'a> {
         EvaluatesTo(Value),
