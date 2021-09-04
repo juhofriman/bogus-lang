@@ -1,10 +1,12 @@
 use crate::ast::m_null::NullMatcher;
+use crate::ast::scope::Scope;
 
 mod m_integer;
 mod m_string;
 mod m_null;
 mod e_plus;
 mod e_minus;
+mod scope;
 
 /// Common error in evaluation
 #[derive(Debug)]
@@ -14,17 +16,21 @@ pub struct EvalError {
 
 /// Expression has evaluate(&self). Evaluating expression returns Boxed Value.
 pub trait Expression {
-    fn evaluate(&self) -> Result<Box<Value>, EvalError>;
+    fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError>;
 }
 
 /// Operable gives possibility to apply operators. Operations return NEW Value.
 pub trait Operable {
     fn apply_plus(&self, other: &Value) -> Result<Value, EvalError>;
     fn apply_minus(&self, other: &Value) -> Result<Value, EvalError>;
+
+    // ... and all operators will eventually follow ...
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
+    Identifier(String),
+
     Integer(i32),
     String(String),
 
@@ -35,6 +41,7 @@ pub enum Value {
 impl Value {
     fn name(&self) -> &'static str {
         match self {
+            Value::Identifier(_) => "Identifier",
             Value::Integer(_) => "Integer",
             Value::String(_) => "String",
             Value::Null => "Null",
@@ -44,9 +51,20 @@ impl Value {
 }
 
 impl Expression for Value {
-    /// Unfortunately current implementation enforces to clone values when evaluated
-    fn evaluate(&self) -> Result<Box<Value>, EvalError> {
-        Ok(Box::new(self.clone()))
+    fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError> {
+        match self {
+            // Identifiers are resolved from given scope
+            Value::Identifier(name) => {
+                match scope.resolve(name.as_str()) {
+                    Some(value) => Ok(Box::new(value.clone())),
+                    None => Err( EvalError {
+                        msg: format!("Can't resolve identifier '{}'", name)
+                    } )
+                }
+            },
+            // Unfortunately current implementation enforces to clone values when evaluated
+            _ => Ok(Box::new(self.clone()))
+        }
     }
 }
 
@@ -139,6 +157,7 @@ impl OperatorApplyMatcher for FailingMatcher {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
+    use crate::ast::scope::Scope;
 
     pub enum Expected<'a> {
         EvaluatesTo(Value),
@@ -167,14 +186,33 @@ mod tests {
             },
         ];
 
-        run_expression_tests(cases);
+        run_expression_tests(cases, None);
     }
 
-    pub fn run_expression_tests(cases: Vec<ExpressionTest>) {
+    #[test]
+    fn test_evaluate_identifier() {
+        let mut scope = Scope::new();
+        scope.store("a", Value::Integer(1));
+
+        evals_to(Value::Identifier("a".to_string()).evaluate(&mut scope),
+                 Value::Integer(1));
+
+        fails_to(Value::Identifier("b".to_string()).evaluate(&mut scope),
+                 "Can't resolve identifier 'b'");
+    }
+
+    pub fn run_expression_tests(cases: Vec<ExpressionTest>, base_scope: Option<&Scope>) {
         for case in cases {
+            let mut scope = match base_scope {
+                // This needs to clone the given base scope
+                Some(_) => panic!("Base scope not implemented!"),
+                None => Scope::new(),
+            };
             match case.expected {
-                Expected::EvaluatesTo(value) => evals_to(case.expression.evaluate(), value),
-                Expected::ErrorsTo(error_msg) => fails_to(case.expression.evaluate(), error_msg),
+                Expected::EvaluatesTo(value) =>
+                    evals_to(case.expression.evaluate(&mut scope), value),
+                Expected::ErrorsTo(error_msg) =>
+                    fails_to(case.expression.evaluate(&mut scope), error_msg),
             }
         }
     }

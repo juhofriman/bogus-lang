@@ -1,4 +1,5 @@
 use crate::ast::{Expression, Value, EvalError, Operable};
+use crate::ast::scope::Scope;
 
 struct PlusExpression {
     left: Box<dyn Expression>,
@@ -6,9 +7,9 @@ struct PlusExpression {
 }
 
 impl Expression for PlusExpression {
-    fn evaluate(&self) -> Result<Box<Value>, EvalError> {
-        let left_res = self.left.evaluate()?;
-        let right_res = self.right.evaluate()?;
+    fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError> {
+        let left_res = self.left.evaluate(scope)?;
+        let right_res = self.right.evaluate(scope)?;
         let result = left_res.apply_plus(&right_res)?;
         Ok(Box::new(result))
     }
@@ -103,11 +104,12 @@ mod tests {
             },
         ];
 
-        run_expression_tests(cases);
+        run_expression_tests(cases, None);
     }
 
     #[test]
     fn test_nested_expressions() {
+        let mut scope = Scope::new();
         let expr = PlusExpression {
             left: Box::new(PlusExpression {
                 left: Box::new(Value::Integer(5)),
@@ -115,6 +117,22 @@ mod tests {
             }),
             right: Box::new(Value::Integer(1)),
         };
-        evals_to(expr.evaluate(), Value::Integer(11));
+        evals_to(expr.evaluate(&mut scope), Value::Integer(11));
+    }
+
+    #[test]
+    fn test_with_identifiers() {
+        let mut scope = Scope::new();
+        scope.store("a", Value::Integer(12));
+        scope.store("b", Value::Integer(3));
+        scope.store("c", Value::Integer(1));
+        let expr = PlusExpression {
+            left: Box::new(PlusExpression {
+                left: Box::new(Value::Identifier("a".to_string())),
+                right: Box::new(Value::Identifier("b".to_string())),
+            }),
+            right: Box::new(Value::Identifier("c".to_string())),
+        };
+        evals_to(expr.evaluate(&mut scope), Value::Integer(16));
     }
 }
