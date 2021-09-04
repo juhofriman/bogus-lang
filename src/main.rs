@@ -1,6 +1,9 @@
 use crate::lexer::create_lexer;
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
+use crate::ast::{Value, Expression};
+use crate::ast::scope::Scope;
+use crate::ast::e_plus::PlusExpression;
 
 mod lexer;
 mod ast;
@@ -28,19 +31,19 @@ fn main() {
                     _ if line.is_empty() => (),
                     _ if line.starts_with(":normal") => {
                         repl_mode = ReplMode::Normal
-                    },
+                    }
                     _ if line.starts_with(":lexus") => {
                         repl_mode = ReplMode::Lexus
-                    },
+                    }
                     _ => {
                         rl.add_history_entry(line.as_str());
                         match repl_mode {
                             ReplMode::Lexus => {
                                 lex_input(&line);
-                            },
+                            }
                             ReplMode::Normal => {
-                                println!("Would eval ...")
-                            },
+                                dummy_eval();
+                            }
                         }
                     }
                 }
@@ -76,4 +79,24 @@ fn lex_input(input: &str) {
             println!("{}", error)
         }
     }
+}
+
+fn dummy_eval() {
+    let mut scope = Scope::new();
+    let expr = PlusExpression {
+        left: Box::new(PlusExpression {
+            left: Box::new(Value::Null),
+            right: Box::new(Value::Integer(5)),
+        }),
+        right: Box::new(Value::Integer(1)),
+    };
+    match expr.evaluate(&mut scope) {
+        Ok(value) => {
+            println!("{}", value)
+        },
+        Err(err) => {
+            println!("{}", err)
+        }
+    }
+
 }
