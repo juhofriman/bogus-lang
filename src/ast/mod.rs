@@ -1,17 +1,24 @@
 use crate::ast::m_null::NullMatcher;
 use crate::ast::scope::Scope;
+use std::fmt::{Display, Formatter};
 
 mod m_integer;
 mod m_string;
 mod m_null;
-mod e_plus;
-mod e_minus;
-mod scope;
+pub mod e_plus;
+pub mod e_minus;
+pub mod scope;
 
 /// Common error in evaluation
 #[derive(Debug)]
 pub struct EvalError {
     msg: String,
+}
+
+impl Display for EvalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Eval Error: {}", self.msg)
+    }
 }
 
 /// Expression has evaluate(&self). Evaluating expression returns Boxed Value.
@@ -46,6 +53,23 @@ impl Value {
             Value::String(_) => "String",
             Value::Null => "Null",
             Value::Void => "Void",
+        }
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Identifier(val) =>
+                write!(f, "{}", val),
+            Value::Integer(val) =>
+                write!(f, "{}", val),
+            Value::String(val) =>
+                write!(f, "{}", val),
+            Value::Null =>
+                write!(f, "{}", self.name()),
+            Value::Void =>
+                write!(f, "{}", self.name()),
         }
     }
 }

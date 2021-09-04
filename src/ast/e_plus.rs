@@ -1,9 +1,9 @@
 use crate::ast::{Expression, Value, EvalError, Operable};
 use crate::ast::scope::Scope;
 
-struct PlusExpression {
-    left: Box<dyn Expression>,
-    right: Box<dyn Expression>,
+pub struct PlusExpression {
+    pub left: Box<dyn Expression>,
+    pub right: Box<dyn Expression>,
 }
 
 impl Expression for PlusExpression {

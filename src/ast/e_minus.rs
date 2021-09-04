@@ -1,9 +1,9 @@
 use crate::ast::{Expression, Value, EvalError, Operable};
 use crate::ast::scope::Scope;
 
-struct MinusExpression {
-    left: Box<dyn Expression>,
-    right: Box<dyn Expression>,
+pub struct MinusExpression {
+    pub left: Box<dyn Expression>,
+    pub right: Box<dyn Expression>,
 }
 
 impl Expression for MinusExpression {
