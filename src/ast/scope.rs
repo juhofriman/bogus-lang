@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use crate::ast::Value;
 
-pub struct Scope<'a> {
-    registry: HashMap<&'a str, Value>
+pub struct Scope {
+    registry: HashMap<String, Value>
 }
 
-impl<'a> Scope<'a> {
+impl Scope {
 
     pub fn new() -> Self {
         Scope {
@@ -13,8 +13,8 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn store(&mut self, identifier: &'a str, value: Value) {
-        self.registry.insert(identifier, value);
+    pub fn store(&mut self, identifier: &str, value: Value) {
+        self.registry.insert(identifier.to_string(), value);
     }
 
     pub fn resolve(&self, identifier: &str) -> Option<&Value> {
