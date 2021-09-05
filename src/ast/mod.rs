@@ -8,6 +8,7 @@ mod m_null;
 pub mod e_plus;
 pub mod e_minus;
 pub mod scope;
+pub mod s_let;
 
 /// Common error in evaluation
 #[derive(Debug)]
@@ -182,6 +183,8 @@ mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
     use crate::ast::scope::Scope;
+    use crate::ast::s_let::LetStatement;
+    use crate::ast::e_plus::PlusExpression;
 
     pub enum Expected<'a> {
         EvaluatesTo(Value),
@@ -223,6 +226,33 @@ mod tests {
 
         fails_to(Value::Identifier("b".to_string()).evaluate(&mut scope),
                  "Can't resolve identifier 'b'");
+    }
+
+    #[test]
+    fn test_simple_program() {
+        let mut scope = Scope::new();
+        let s1 = LetStatement {
+            identifier: "foo".to_string(),
+            expression: Box::new(Value::Integer(1)),
+        };
+        let s2 = LetStatement {
+            identifier: "bar".to_string(),
+            expression: Box::new(Value::Integer(2)),
+        };
+        let s3 = LetStatement {
+            identifier: "bax".to_string(),
+            expression: Box::new(PlusExpression {
+                left: Box::new(Value::Identifier("foo".to_string())),
+                right: Box::new(Value::Identifier("bar".to_string())),
+            }),
+        };
+        evals_to(s1.evaluate(&mut scope), Value::Void);
+        evals_to(s2.evaluate(&mut scope), Value::Void);
+        evals_to(s3.evaluate(&mut scope), Value::Void);
+
+        assert_eq!(scope.resolve("foo"), Some(&Value::Integer(1)));
+        assert_eq!(scope.resolve("bar"), Some(&Value::Integer(2)));
+        assert_eq!(scope.resolve("bax"), Some(&Value::Integer(3)));
     }
 
     pub fn run_expression_tests(cases: Vec<ExpressionTest>, base_scope: Option<&Scope>) {
