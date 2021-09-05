@@ -47,7 +47,7 @@ pub enum Value {
 }
 
 impl Value {
-    fn name(&self) -> &'static str {
+    fn type_name(&self) -> &'static str {
         match self {
             Value::Identifier(_) => "Identifier",
             Value::Integer(_) => "Integer",
@@ -68,9 +68,9 @@ impl Display for Value {
             Value::String(val) =>
                 write!(f, "{}", val),
             Value::Null =>
-                write!(f, "{}", self.name()),
+                write!(f, "{}", self.type_name()),
             Value::Void =>
-                write!(f, "{}", self.name()),
+                write!(f, "{}", self.type_name()),
         }
     }
 }
@@ -111,7 +111,7 @@ pub trait OperatorApplyMatcher {
             Value::Integer(val) => self.apply_plus_with_integer(val),
             Value::String(val) => self.apply_plus_with_string(val),
             Value::Null => self.apply_plus_with_null(),
-            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.name()) })
+            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
         }
     }
 
@@ -120,7 +120,7 @@ pub trait OperatorApplyMatcher {
             Value::Integer(val) => self.apply_minus_with_integer(val),
             Value::String(val) => self.apply_minus_with_string(val),
             Value::Null => self.apply_minus_with_null(),
-            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.name()) })
+            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
         }
     }
 
@@ -158,7 +158,7 @@ fn matcher_from_value(value: &Value) -> Box<dyn OperatorApplyMatcher + '_> {
         Value::Integer(value) => Box::new(Matcher { value }),
         Value::String(value) => Box::new(Matcher { value }),
         Value::Null => Box::new(NullMatcher {}),
-        _ => Box::new(FailingMatcher { wrapped_type: value.name() }),
+        _ => Box::new(FailingMatcher { wrapped_type: value.type_name() }),
     }
 }
 
@@ -174,7 +174,7 @@ impl OperatorApplyMatcher for FailingMatcher {
     }
 
     fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), other.name()) })
+        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), other.type_name()) })
     }
 }
 
