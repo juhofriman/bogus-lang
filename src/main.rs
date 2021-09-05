@@ -1,4 +1,4 @@
-use crate::lexer::create_lexer;
+use crate::lexer::{Lexer};
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
 use crate::ast::{Value, Expression};
@@ -7,6 +7,7 @@ use crate::ast::e_plus::PlusExpression;
 
 mod lexer;
 mod ast;
+mod parser;
 
 enum ReplMode {
     Normal,
@@ -65,7 +66,7 @@ fn main() {
 }
 
 fn lex_input(input: &str) {
-    match create_lexer(input) {
+    match Lexer::new(input) {
         Ok(mut lexer) => {
             println!("[");
             while lexer.has_next() {

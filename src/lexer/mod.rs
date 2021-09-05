@@ -13,6 +13,29 @@ pub struct Lexer {
 #[allow(dead_code)]
 impl Lexer {
 
+    pub fn new(source: &str) -> Result<Lexer, LexingError> {
+        let mut tokens: Vec<Token> = vec![];
+        let mut buffer = LexBuffer {
+            mode: LexingState::Normal,
+            buffer: String::new(),
+            current_line: 1,
+            current_column: 0,
+            token_column_marker: 0,
+            string_escape_flag: false,
+        };
+        let mut character_iter = source.chars().peekable();
+        while let Some(char) = character_iter.next() {
+            // This forwards LexingError
+            if let Some(token) = buffer.push_char(char, character_iter.peek())? {
+                tokens.push(token);
+            }
+        }
+        Ok(Lexer {
+            pointer: 0,
+            tokens,
+        })
+    }
+
     /// Advances lexer and returns next token
     pub fn next(&mut self) -> Option<&Token> {
         let token = self.tokens.get(self.pointer);
@@ -41,31 +64,6 @@ impl fmt::Display for LexingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Lexing Error: {} @ {}", self.msg, self.location)
     }
-}
-
-/// Creates consumable lexer for given input
-/// This is the entrypoint to lexer module
-pub fn create_lexer(source: &str) -> Result<Lexer, LexingError> {
-    let mut tokens: Vec<Token> = vec![];
-    let mut buffer = LexBuffer {
-        mode: LexingState::Normal,
-        buffer: String::new(),
-        current_line: 1,
-        current_column: 0,
-        token_column_marker: 0,
-        string_escape_flag: false,
-    };
-    let mut character_iter = source.chars().peekable();
-    while let Some(char) = character_iter.next() {
-        // This forwards LexingError
-        if let Some(token) = buffer.push_char(char, character_iter.peek())? {
-            tokens.push(token);
-        }
-    }
-    Ok(Lexer {
-        pointer: 0,
-        tokens,
-    })
 }
 
 /// State enum for lexer. Lexer behaves differently in different modes
@@ -453,7 +451,7 @@ mod tests {
 
     #[test]
     fn test_lexer_usage() {
-        match create_lexer("let a = 1;") {
+        match Lexer::new("let a = 1;") {
             Ok(mut lexer) => {
                 assert!(lexer.has_next());
                 assert_eq!(lexer.peek().unwrap().token_kind, Let);
@@ -757,7 +755,7 @@ mod tests {
     }
 
     fn with_input_errors_to(input: &str, expected_error: LexingError) {
-        match create_lexer(input) {
+        match Lexer::new(input) {
             Ok(_) => panic!("Expecting lexer to error, but working lexer was returned. Input: {}", input),
             Err(error) => {
                 assert_eq!(expected_error.msg, error.msg)
@@ -772,7 +770,7 @@ mod tests {
     /// Asserts given input lexes to expected tokens
     /// Note: this also checks lines and columns
     fn do_lexing_assertion(input: &str, expected_tokens: Vec<Token>, assert_refs: bool) {
-        match create_lexer(input) {
+        match Lexer::new(input) {
             Ok(mut lexer) => {
                 for expected_token in expected_tokens {
                     let (received_line, received_column) = advance_expect(&mut lexer, &expected_token.token_kind);
