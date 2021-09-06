@@ -4,6 +4,7 @@ use rustyline::error::ReadlineError;
 use crate::ast::{Value, Expression};
 use crate::ast::scope::Scope;
 use crate::ast::e_plus::PlusExpression;
+use crate::parser::Parser;
 
 mod lexer;
 mod ast;
@@ -22,7 +23,7 @@ fn prompt(repl_mode: &ReplMode) -> &str {
 }
 
 fn main() {
-    let mut repl_mode = ReplMode::Lexus;
+    let mut repl_mode = ReplMode::Normal;
     let mut rl = Editor::<()>::new();
     loop {
         let readline = rl.readline(prompt(&repl_mode));
@@ -43,7 +44,7 @@ fn main() {
                                 lex_input(&line);
                             }
                             ReplMode::Normal => {
-                                dummy_eval();
+                                eval(&line);
                             }
                         }
                     }
@@ -82,21 +83,29 @@ fn lex_input(input: &str) {
     }
 }
 
-fn dummy_eval() {
-    let mut scope = Scope::new();
-    let expr = PlusExpression::new(
-        Box::new(PlusExpression::new(
-            Box::new(Value::Null),
-            Box::new(Value::Integer(5)),
-        )),
-        Box::new(Value::Integer(1)),
-    );
-    match expr.evaluate(&mut scope) {
-        Ok(value) => {
-            println!("{}", value)
+fn eval(input: &str) {
+
+    match Lexer::new(input) {
+        Ok(mut lexer) => {
+            let mut parser = Parser::new(&mut lexer);
+            match parser.parse() {
+                Ok(things) => {
+                    let mut scope = Scope::new();
+                    for thing in things {
+                        match thing.evaluate(&mut scope) {
+                            Ok(res) => {
+                                println!("{}", res);
+                            },
+                            Err(eval_error) => {
+                                println!("{}", eval_error);
+                            }
+                        }
+
+                    }
+                },
+                Err(parse_error) => println!("{}", parse_error)
+            }
         }
-        Err(err) => {
-            println!("{}", err)
-        }
+        Err(lexing_error) => println!("{}", lexing_error)
     }
 }

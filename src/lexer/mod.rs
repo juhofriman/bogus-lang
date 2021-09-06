@@ -1,8 +1,9 @@
-use crate::lexer::tokens::{Token, TokenKind, create_token, SourceRef};
+pub mod tokens;
+
+use tokens::{Token, TokenKind, create_token, SourceRef };
+
 use core::fmt;
 use crate::lexer::ShouldContinue::{BailOut, Continue};
-
-mod tokens;
 
 /// Consumable lexer instance, create with create_lexer()
 pub struct Lexer {
