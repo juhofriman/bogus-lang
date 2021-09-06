@@ -231,21 +231,21 @@ mod tests {
     #[test]
     fn test_simple_program() {
         let mut scope = Scope::new();
-        let s1 = LetStatement {
-            identifier: "foo".to_string(),
-            expression: Box::new(Value::Integer(1)),
-        };
-        let s2 = LetStatement {
-            identifier: "bar".to_string(),
-            expression: Box::new(Value::Integer(2)),
-        };
-        let s3 = LetStatement {
-            identifier: "bax".to_string(),
-            expression: Box::new(PlusExpression {
-                left: Box::new(Value::Identifier("foo".to_string())),
-                right: Box::new(Value::Identifier("bar".to_string())),
-            }),
-        };
+        let s1 = LetStatement::new(
+            Value::Identifier("foo".to_string()),
+            Box::new(Value::Integer(1))
+        );
+        let s2 = LetStatement::new(
+            Value::Identifier("bar".to_string()),
+            Box::new(Value::Integer(2))
+        );
+        let s3 = LetStatement::new(
+            Value::Identifier("bax".to_string()),
+            Box::new(PlusExpression::new(
+                Box::new(Value::Identifier("foo".to_string())),
+                Box::new(Value::Identifier("bar".to_string())))),
+        );
+
         evals_to(s1.evaluate(&mut scope), Value::Void);
         evals_to(s2.evaluate(&mut scope), Value::Void);
         evals_to(s3.evaluate(&mut scope), Value::Void);

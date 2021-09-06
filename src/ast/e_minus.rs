@@ -4,6 +4,17 @@ use crate::ast::scope::Scope;
 pub struct MinusExpression {
     pub left: Box<dyn Expression>,
     pub right: Box<dyn Expression>,
+    _private: (),
+}
+
+impl MinusExpression {
+    pub fn new(left: Box<dyn Expression>, right: Box<dyn Expression>) -> MinusExpression {
+        MinusExpression {
+            left,
+            right,
+            _private: (),
+        }
+    }
 }
 
 impl Expression for MinusExpression {
@@ -22,10 +33,10 @@ mod tests {
     use crate::ast::tests::{run_expression_tests, ExpressionTest, Expected, evals_to};
 
     fn create_minus_expression(left: Value, right: Value) -> Box<MinusExpression> {
-        Box::new(MinusExpression {
-            left: Box::new(left),
-            right: Box::new(right),
-        })
+        Box::new(MinusExpression::new(
+            Box::new(left),
+            Box::new(right),
+        ))
     }
 
     #[test]
@@ -36,14 +47,14 @@ mod tests {
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::Integer(1),
-                    Value::Integer(1)
+                    Value::Integer(1),
                 ),
                 expected: Expected::EvaluatesTo(Value::Integer(0)),
             },
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::Integer(-1),
-                    Value::Integer(1)
+                    Value::Integer(1),
                 ),
                 expected: Expected::EvaluatesTo(Value::Integer(-2)),
             },
@@ -52,28 +63,28 @@ mod tests {
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::String("foo".to_string()),
-                    Value::Integer(1)
+                    Value::Integer(1),
                 ),
                 expected: Expected::ErrorsTo("Can't apply String - Integer"),
             },
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::String("foo".to_string()),
-                    Value::Integer(-1)
+                    Value::Integer(-1),
                 ),
                 expected: Expected::ErrorsTo("Can't apply String - Integer"),
             },
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::Integer(1),
-                    Value::String("foo".to_string())
+                    Value::String("foo".to_string()),
                 ),
                 expected: Expected::ErrorsTo("Can't apply Integer - String"),
             },
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::Integer(-1),
-                    Value::String("foo".to_string())
+                    Value::String("foo".to_string()),
                 ),
                 expected: Expected::ErrorsTo("Can't apply Integer - String"),
             },
@@ -82,7 +93,7 @@ mod tests {
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::String("foo".to_string()),
-                    Value::String("bar".to_string())
+                    Value::String("bar".to_string()),
                 ),
                 expected: Expected::ErrorsTo("Can't apply String - String"),
             },
@@ -91,7 +102,7 @@ mod tests {
             ExpressionTest {
                 expression: create_minus_expression(
                     Value::Integer(1),
-                    Value::Null
+                    Value::Null,
                 ),
                 expected: Expected::ErrorsTo("Can't apply Integer - Null"),
             },
@@ -110,13 +121,13 @@ mod tests {
     #[test]
     fn test_nested_expressions() {
         let mut scope = Scope::new();
-        let expr = MinusExpression {
-            left: Box::new(MinusExpression {
-                left: Box::new(Value::Integer(5)),
-                right: Box::new(Value::Integer(5)),
-            }),
-            right: Box::new(Value::Integer(1)),
-        };
+        let expr = MinusExpression::new(
+            Box::new(MinusExpression::new(
+                Box::new(Value::Integer(5)),
+                Box::new(Value::Integer(5)),
+            )),
+            Box::new(Value::Integer(1)),
+        );
         evals_to(expr.evaluate(&mut scope), Value::Integer(-1));
     }
 
@@ -125,13 +136,13 @@ mod tests {
         let mut scope = Scope::new();
         scope.store("a", Value::Integer(12));
         scope.store("b", Value::Integer(4));
-        let expr = MinusExpression {
-            left: Box::new(MinusExpression {
-                left: Box::new(Value::Identifier("a".to_string())),
-                right: Box::new(Value::Integer(4)),
-            }),
-            right: Box::new(Value::Identifier("b".to_string())),
-        };
+        let expr = MinusExpression::new(
+            Box::new(MinusExpression::new(
+                Box::new(Value::Identifier("a".to_string())),
+                Box::new(Value::Integer(4)),
+            )),
+            Box::new(Value::Identifier("b".to_string())),
+        );
         evals_to(expr.evaluate(&mut scope), Value::Integer(4));
     }
 }

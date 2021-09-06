@@ -3,7 +3,21 @@ use crate::ast::scope::Scope;
 
 pub struct LetStatement {
     pub identifier: String,
-    pub expression: Box<dyn Expression>
+    pub expression: Box<dyn Expression>,
+    _private: ()
+}
+
+impl LetStatement {
+    pub fn new(name: Value, expression: Box<dyn Expression>) -> LetStatement {
+        if let Value::Identifier(identifier) = name {
+            return LetStatement {
+                identifier,
+                expression,
+                _private: (),
+            }
+        }
+        panic!("Can't build LetStatement from name: {:?}", name);
+    }
 }
 
 impl Expression for LetStatement {
@@ -21,12 +35,11 @@ mod tests {
     use crate::ast::tests::evals_to;
 
     #[test]
-    fn test_let() {
+    fn test_let_statement() {
         // Ingenious :D
-        let statement = LetStatement {
-            identifier: "foo".to_string(),
-            expression: Box::new(Value::Integer(1)),
-        };
+        let statement = LetStatement::new(
+            Value::Identifier("foo".to_string()),
+            Box::new(Value::Integer(1)));
         let mut scope = Scope::new();
         evals_to(statement.evaluate(&mut scope), Value::Void);
         assert_eq!(scope.resolve("foo"), Some(&Value::Integer(1)));

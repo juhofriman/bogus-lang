@@ -84,20 +84,19 @@ fn lex_input(input: &str) {
 
 fn dummy_eval() {
     let mut scope = Scope::new();
-    let expr = PlusExpression {
-        left: Box::new(PlusExpression {
-            left: Box::new(Value::Null),
-            right: Box::new(Value::Integer(5)),
-        }),
-        right: Box::new(Value::Integer(1)),
-    };
+    let expr = PlusExpression::new(
+        Box::new(PlusExpression::new(
+            Box::new(Value::Null),
+            Box::new(Value::Integer(5)),
+        )),
+        Box::new(Value::Integer(1)),
+    );
     match expr.evaluate(&mut scope) {
         Ok(value) => {
             println!("{}", value)
-        },
+        }
         Err(err) => {
             println!("{}", err)
         }
     }
-
 }
