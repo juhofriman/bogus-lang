@@ -17,4 +17,7 @@ impl OperatorApplyMatcher for Matcher<'_, i32> {
     fn apply_minus_with_integer(&self, other: &i32) -> Result<Value, EvalError> {
         Ok(Value::Integer(self.value - other))
     }
+    fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
+        Ok(Value::Integer(-(*self.value)))
+    }
 }

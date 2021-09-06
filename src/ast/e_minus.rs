@@ -1,6 +1,28 @@
 use crate::ast::{Expression, Value, EvalError, Operable};
 use crate::ast::scope::Scope;
 
+pub struct PrefixMinusExpression {
+    pub expression: Box<dyn Expression>,
+    _private: (),
+}
+
+impl PrefixMinusExpression {
+    pub fn new(expression: Box<dyn Expression>) -> PrefixMinusExpression {
+        PrefixMinusExpression {
+            expression,
+            _private: (),
+        }
+    }
+}
+
+impl Expression for PrefixMinusExpression {
+    fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError> {
+        let left_res = self.expression.evaluate(scope)?;
+        let result = left_res.apply_prefix_minus()?;
+        Ok(Box::new(result))
+    }
+}
+
 pub struct MinusExpression {
     pub left: Box<dyn Expression>,
     pub right: Box<dyn Expression>,
@@ -37,6 +59,22 @@ mod tests {
             Box::new(left),
             Box::new(right),
         ))
+    }
+
+    #[test]
+    fn test_prefix_minus() {
+        let cases = vec![
+
+            // int to int
+            ExpressionTest {
+                expression: Box::new(PrefixMinusExpression::new(
+                    Box::new(Value::Integer(1))
+                )),
+                expected: Expected::EvaluatesTo(Value::Integer(-1)),
+            },
+        ];
+
+        run_expression_tests(cases, None);
     }
 
     #[test]

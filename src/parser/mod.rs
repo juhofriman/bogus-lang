@@ -3,7 +3,7 @@ use crate::lexer::tokens::{Token, TokenKind};
 use crate::ast::{Expression, Value};
 use std::process::{exit, id};
 use crate::ast::e_plus::PlusExpression;
-use crate::ast::e_minus::MinusExpression;
+use crate::ast::e_minus::{MinusExpression, PrefixMinusExpression};
 use crate::ast::s_let::LetStatement;
 
 pub struct ParseError {
@@ -139,11 +139,16 @@ pub struct PlusParselet {}
 
 impl Parselet for PlusParselet {
     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-        todo!()
+        parse_expression(0, self, lexer)
     }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
-        todo!()
+        let expression = parse_expression(
+            0,
+            &*get_parselet(lexer.next())?,
+            lexer)?;
+        // This does not create extra expression. Side effect is that +"foo" -> "foo".
+        Ok(Some(expression))
     }
 
     fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
@@ -163,11 +168,15 @@ pub struct MinusParselet {}
 
 impl Parselet for MinusParselet {
     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-        todo!()
+        parse_expression(0, self, lexer)
     }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
-        todo!()
+        let expression = parse_expression(
+            0,
+            &*get_parselet(lexer.next())?,
+            lexer)?;
+        Ok(Some(Box::new(PrefixMinusExpression::new(expression))))
     }
 
     fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
@@ -195,11 +204,33 @@ mod tests {
         parses_to("1".to_string(), vec![
             Box::new(Value::Integer(1)),
         ]);
+        parses_to("-1".to_string(), vec![
+            Box::new(Value::Integer(-1)),
+        ]);
+        parses_to("+1".to_string(), vec![
+            Box::new(Value::Integer(1)),
+        ]);
         parses_to("2".to_string(), vec![
             Box::new(Value::Integer(2)),
         ]);
         parses_to("\"Hello world!\"".to_string(), vec![
             Box::new(Value::String("Hello world!".to_string())),
+        ]);
+    }
+
+    #[test]
+    fn parse_simple_expressions() {
+        parses_to("1 + 2".to_string(), vec![
+            Box::new(Value::Integer(3)),
+        ]);
+        parses_to("1 - 2".to_string(), vec![
+            Box::new(Value::Integer(-1)),
+        ]);
+        parses_to("\"Hello world!\" + 123".to_string(), vec![
+            Box::new(Value::String("Hello world!123".to_string())),
+        ]);
+        parses_to("123 + \"Hello world!\"".to_string(), vec![
+            Box::new(Value::String("123Hello world!".to_string())),
         ]);
     }
 

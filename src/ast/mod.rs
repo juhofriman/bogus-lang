@@ -32,6 +32,8 @@ pub trait Operable {
     fn apply_plus(&self, other: &Value) -> Result<Value, EvalError>;
     fn apply_minus(&self, other: &Value) -> Result<Value, EvalError>;
 
+    fn apply_prefix_minus(&self) -> Result<Value, EvalError>;
+
     // ... and all operators will eventually follow ...
 }
 
@@ -100,6 +102,9 @@ impl Operable for Value {
     fn apply_minus(&self, other: &Value) -> Result<Value, EvalError> {
         Ok(matcher_from_value(self).apply_minus(other)?)
     }
+    fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
+        Ok(matcher_from_value(self).apply_prefix_minus()?)
+    }
 }
 
 pub trait OperatorApplyMatcher {
@@ -123,6 +128,11 @@ pub trait OperatorApplyMatcher {
             anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
         }
     }
+
+    fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply - {}", self.name()) })
+    }
+
 
     fn apply_plus_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
         Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Integer") })
