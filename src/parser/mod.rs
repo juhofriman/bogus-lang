@@ -3,6 +3,7 @@ use crate::lexer::tokens::{Token, TokenKind};
 use crate::ast::{Expression, Value};
 use crate::ast::e_plus::PlusExpression;
 use crate::ast::e_minus::{MinusExpression, PrefixMinusExpression};
+use crate::ast::e_multiplication::MultiplicationExpression;
 
 pub struct ParseError {
     msg: String,
@@ -44,6 +45,7 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
             TokenKind::Str(value) => Ok(Box::new(StringParselet { value: value.clone() })),
             TokenKind::Plus => Ok(Box::new(PlusParselet {})),
             TokenKind::Minus => Ok(Box::new(MinusParselet {})),
+            TokenKind::Multiplication => Ok(Box::new(MultiplicationParselet {})),
             _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
         };
     }
@@ -56,6 +58,7 @@ fn rbp_for(token: Option<&Token>) -> u32 {
             TokenKind::Integer(_) => 1,
             TokenKind::Plus => 5,
             TokenKind::Minus => 5,
+            TokenKind::Multiplication => 10,
             _ => { panic!("rbp (right binding power) is not defined for {:?}", token); }
         };
     }
@@ -190,6 +193,30 @@ impl Parselet for MinusParselet {
     }
 }
 
+pub struct MultiplicationParselet {}
+
+impl Parselet for MultiplicationParselet {
+    fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
+        parse_expression(0, self, lexer)
+    }
+
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Err( ParseError { msg: "Can't parse * in prefix position".to_string() } )
+    }
+
+    fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        let right = parse_expression(
+            10,
+            &*get_parselet(lexer.next())?,
+            lexer)?;
+
+        Ok(Some(Box::new(MultiplicationExpression::new(
+            left,
+            right,
+        ))))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -229,6 +256,24 @@ mod tests {
         ]);
         parses_to("-1 - 2".to_string(), vec![
             Box::new(Value::Integer(-3)),
+        ]);
+        parses_to("1 * 2".to_string(), vec![
+            Box::new(Value::Integer(2)),
+        ]);
+        parses_to("-1 * 2".to_string(), vec![
+            Box::new(Value::Integer(-2)),
+        ]);
+        parses_to("1 * -2".to_string(), vec![
+            Box::new(Value::Integer(-2)),
+        ]);
+        parses_to("-1 * -2".to_string(), vec![
+            Box::new(Value::Integer(2)),
+        ]);
+        parses_to("2 * 2 + 1".to_string(), vec![
+            Box::new(Value::Integer(5)),
+        ]);
+        parses_to("1 + 2 * 2".to_string(), vec![
+            Box::new(Value::Integer(5)),
         ]);
         parses_to("\"Hello world!\" + 123".to_string(), vec![
             Box::new(Value::String("Hello world!123".to_string())),

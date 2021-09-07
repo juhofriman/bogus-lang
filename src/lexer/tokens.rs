@@ -47,6 +47,7 @@ pub enum TokenKind {
     Equals,
     Minus,
     Plus,
+    Multiplication,
     Division,
     Arrow,
 

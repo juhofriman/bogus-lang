@@ -197,6 +197,7 @@ impl LexBuffer {
                         char_is_not(peek, '>'))),
                     "+" => Ok(Some(self.pop_buffer(TokenKind::Plus))),
                     "/" => Ok(Some(self.pop_buffer(TokenKind::Division))),
+                    "*" => Ok(Some(self.pop_buffer(TokenKind::Multiplication))),
                     "->" => Ok(Some(self.pop_buffer(TokenKind::Arrow))),
                     ";" => Ok(Some(self.pop_buffer(TokenKind::Semicolon))),
                     "=" => Ok(self.pop_buffer_cond(
@@ -407,7 +408,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication};
 
     // Internal implementation test helpers
 
@@ -502,6 +503,7 @@ mod tests {
         token_lexes_to("-", Minus);
         token_lexes_to("+", Plus);
         token_lexes_to("/", Division);
+        token_lexes_to("*", Multiplication);
         token_lexes_to(",", Comma);
         token_lexes_to(".", Dot);
     }
@@ -592,6 +594,11 @@ mod tests {
         with_input_lexes_to("1 / 2", vec![
             dummy_token(Integer(1)),
             dummy_token(Division),
+            dummy_token(Integer(2)),
+        ]);
+        with_input_lexes_to("1 * 2", vec![
+            dummy_token(Integer(1)),
+            dummy_token(Multiplication),
             dummy_token(Integer(2)),
         ]);
         with_input_lexes_to("1 == 2", vec![

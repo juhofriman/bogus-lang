@@ -9,6 +9,7 @@ pub mod e_plus;
 pub mod e_minus;
 pub mod scope;
 pub mod s_let;
+pub mod e_multiplication;
 
 /// Common error in evaluation
 #[derive(Debug)]
@@ -31,6 +32,7 @@ pub trait Expression {
 pub trait Operable {
     fn apply_plus(&self, other: &Value) -> Result<Value, EvalError>;
     fn apply_minus(&self, other: &Value) -> Result<Value, EvalError>;
+    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError>;
 
     fn apply_prefix_minus(&self) -> Result<Value, EvalError>;
 
@@ -102,6 +104,9 @@ impl Operable for Value {
     fn apply_minus(&self, other: &Value) -> Result<Value, EvalError> {
         Ok(matcher_from_value(self).apply_minus(other)?)
     }
+    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError> {
+        Ok(matcher_from_value(self).apply_multiplication(other)?)
+    }
     fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
         Ok(matcher_from_value(self).apply_prefix_minus()?)
     }
@@ -125,6 +130,15 @@ pub trait OperatorApplyMatcher {
             Value::Integer(val) => self.apply_minus_with_integer(val),
             Value::String(val) => self.apply_minus_with_string(val),
             Value::Null => self.apply_minus_with_null(),
+            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
+        }
+    }
+
+    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError> {
+        match other {
+            Value::Integer(val) => self.apply_multiplication_with_integer(val),
+            Value::String(val) => self.apply_multiplication_with_string(val),
+            Value::Null => self.apply_multiplication_with_null(),
             anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
         }
     }
@@ -156,6 +170,18 @@ pub trait OperatorApplyMatcher {
 
     fn apply_minus_with_null(&self) -> Result<Value, EvalError> {
         Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "Null") })
+    }
+
+    fn apply_multiplication_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "Integer") })
+    }
+
+    fn apply_multiplication_with_string(&self, _other: &String) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "String") })
+    }
+
+    fn apply_multiplication_with_null(&self) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "Null") })
     }
 }
 
