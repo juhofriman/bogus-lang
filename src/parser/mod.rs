@@ -1,10 +1,8 @@
 use crate::lexer::{Lexer};
 use crate::lexer::tokens::{Token, TokenKind};
 use crate::ast::{Expression, Value};
-use std::process::{exit, id};
 use crate::ast::e_plus::PlusExpression;
 use crate::ast::e_minus::{MinusExpression, PrefixMinusExpression};
-use crate::ast::s_let::LetStatement;
 
 pub struct ParseError {
     msg: String,
@@ -72,7 +70,7 @@ pub trait Parselet {
 
 fn parse_expression(
     current_rbp: u32,
-    parselet: &Parselet,
+    parselet: &dyn Parselet,
     lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
     let mut left = parselet.nud(lexer)?;
 
@@ -96,11 +94,11 @@ impl Parselet for IntegerParselet {
         parse_expression(0, self, lexer)
     }
 
-    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
         Ok(Some(Box::new(Value::Integer(self.value))))
     }
 
-    fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
+    fn led(&self, _lexer: &mut Lexer, _left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
         Ok(None)
     }
 }
@@ -114,7 +112,7 @@ impl Parselet for StringParselet {
         parse_expression(0, self, lexer)
     }
 
-    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
         Ok(Some(Box::new(Value::String(self.value.clone()))))
     }
 

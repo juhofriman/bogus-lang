@@ -1,9 +1,7 @@
 use crate::lexer::{Lexer};
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
-use crate::ast::{Value, Expression};
 use crate::ast::scope::Scope;
-use crate::ast::e_plus::PlusExpression;
 use crate::parser::Parser;
 
 mod lexer;
