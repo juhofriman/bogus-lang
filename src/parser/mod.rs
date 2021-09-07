@@ -171,7 +171,7 @@ impl Parselet for MinusParselet {
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
         let expression = parse_expression(
-            0,
+            5,
             &*get_parselet(lexer.next())?,
             lexer)?;
         Ok(Some(Box::new(PrefixMinusExpression::new(expression))))
@@ -223,6 +223,12 @@ mod tests {
         ]);
         parses_to("1 - 2".to_string(), vec![
             Box::new(Value::Integer(-1)),
+        ]);
+        parses_to("1 - -2".to_string(), vec![
+            Box::new(Value::Integer(3)),
+        ]);
+        parses_to("-1 - 2".to_string(), vec![
+            Box::new(Value::Integer(-3)),
         ]);
         parses_to("\"Hello world!\" + 123".to_string(), vec![
             Box::new(Value::String("Hello world!123".to_string())),
