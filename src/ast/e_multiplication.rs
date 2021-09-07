@@ -24,6 +24,11 @@ impl Expression for MultiplicationExpression {
         let result = left_res.apply_multiplication(&right_res)?;
         Ok(Box::new(result))
     }
+    fn visualize(&self, level: usize) {
+        println!("{} MultiplicationExpression", "-".repeat(level));
+        self.left.visualize(level + 1);
+        self.right.visualize(level + 1);
+    }
 }
 
 #[cfg(test)]

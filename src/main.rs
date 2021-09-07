@@ -11,12 +11,14 @@ mod parser;
 enum ReplMode {
     Normal,
     Lexus,
+    Ast,
 }
 
 fn prompt(repl_mode: &ReplMode) -> &str {
     match repl_mode {
         ReplMode::Normal => "bogus> ",
         ReplMode::Lexus => "bogus [lex]> ",
+        ReplMode::Ast => "bogus [ast]> ",
     }
 }
 
@@ -35,11 +37,17 @@ fn main() {
                     _ if line.starts_with(":lexus") => {
                         repl_mode = ReplMode::Lexus
                     }
+                    _ if line.starts_with(":ast") => {
+                        repl_mode = ReplMode::Ast
+                    }
                     _ => {
                         rl.add_history_entry(line.as_str());
                         match repl_mode {
                             ReplMode::Lexus => {
                                 lex_input(&line);
+                            }
+                            ReplMode::Ast => {
+                                ast_input(&line);
                             }
                             ReplMode::Normal => {
                                 eval(&line);
@@ -78,6 +86,24 @@ fn lex_input(input: &str) {
         Err(error) => {
             println!("{}", error)
         }
+    }
+}
+
+fn ast_input(input: &str) {
+
+    match Lexer::new(input) {
+        Ok(mut lexer) => {
+            let mut parser = Parser::new(&mut lexer);
+            match parser.parse() {
+                Ok(things) => {
+                    for thing in things {
+                        thing.visualize(1);
+                    }
+                },
+                Err(parse_error) => println!("{}", parse_error)
+            }
+        }
+        Err(lexing_error) => println!("{}", lexing_error)
     }
 }
 

@@ -26,6 +26,9 @@ impl Expression for LetStatement {
         scope.store(self.identifier.as_str(), *value);
         Ok(Box::new(Value::Void))
     }
+    fn visualize(&self, _level: usize) {
+        todo!()
+    }
 }
 
 #[cfg(test)]

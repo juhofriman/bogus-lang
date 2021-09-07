@@ -21,6 +21,10 @@ impl Expression for PrefixMinusExpression {
         let result = left_res.apply_prefix_minus()?;
         Ok(Box::new(result))
     }
+    fn visualize(&self, level: usize) {
+        println!("{} PrefixMinusExpression", "-".repeat(level));
+        self.expression.visualize(level + 1);
+    }
 }
 
 pub struct MinusExpression {
@@ -45,6 +49,11 @@ impl Expression for MinusExpression {
         let right_res = self.right.evaluate(scope)?;
         let result = left_res.apply_minus(&right_res)?;
         Ok(Box::new(result))
+    }
+    fn visualize(&self, level: usize) {
+        println!("{} MinusExpression", "-".repeat(level));
+        self.left.visualize(level + 1);
+        self.right.visualize(level + 1);
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::ast::m_null::NullMatcher;
 use crate::ast::scope::Scope;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Debug};
 
 mod m_integer;
 mod m_string;
@@ -26,6 +26,7 @@ impl Display for EvalError {
 /// Expression has evaluate(&self). Evaluating expression returns Boxed Value.
 pub trait Expression {
     fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError>;
+    fn visualize(&self, level: usize);
 }
 
 /// Operable gives possibility to apply operators. Operations return NEW Value.
@@ -39,7 +40,7 @@ pub trait Operable {
     // ... and all operators will eventually follow ...
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Value {
     Identifier(String),
 
@@ -58,6 +59,23 @@ impl Value {
             Value::String(_) => "String",
             Value::Null => "Null",
             Value::Void => "Void",
+        }
+    }
+}
+
+impl Debug for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Identifier(val) =>
+                write!(f, "Identifier({})", val),
+            Value::Integer(val) =>
+                write!(f, "Integer({})", val),
+            Value::String(val) =>
+                write!(f, "String({})", val),
+            Value::Null =>
+                write!(f, "{}", self.type_name()),
+            Value::Void =>
+                write!(f, "{}", self.type_name()),
         }
     }
 }
@@ -94,6 +112,9 @@ impl Expression for Value {
             // Unfortunately current implementation enforces to clone values when evaluated
             _ => Ok(Box::new(self.clone()))
         }
+    }
+    fn visualize(&self, level: usize) {
+        println!("{} {:?}", "-".repeat(level), self)
     }
 }
 

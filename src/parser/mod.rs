@@ -30,8 +30,7 @@ impl Parser<'_> {
         let mut output: Vec<Box<dyn Expression>> = vec![];
 
         while self.lexer.has_next() {
-            let parselet = get_parselet(self.lexer.next())?;
-            output.push(parselet.parse(&mut self.lexer)?)
+            output.push(parse_expression(0, &mut self.lexer)?)
         }
 
         Ok(output)
@@ -46,6 +45,8 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
             TokenKind::Plus => Ok(Box::new(PlusParselet {})),
             TokenKind::Minus => Ok(Box::new(MinusParselet {})),
             TokenKind::Multiplication => Ok(Box::new(MultiplicationParselet {})),
+            TokenKind::LeftParens => Ok(Box::new(LeftParensParselet {})),
+            TokenKind::RightParens => Ok(Box::new(RightParensParselet {})),
             _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
         };
     }
@@ -55,10 +56,12 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
 fn rbp_for(token: Option<&Token>) -> u32 {
     if let Some(token) = token {
         return match token.token_kind {
-            TokenKind::Integer(_) => 1,
+            TokenKind::Integer(_) => 2,
             TokenKind::Plus => 5,
             TokenKind::Minus => 5,
             TokenKind::Multiplication => 10,
+            TokenKind::LeftParens => 50,
+            TokenKind::RightParens => 1,
             _ => { panic!("rbp (right binding power) is not defined for {:?}", token); }
         };
     }
@@ -73,12 +76,13 @@ pub trait Parselet {
 
 fn parse_expression(
     current_rbp: u32,
-    parselet: &dyn Parselet,
     lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-    let mut left = parselet.nud(lexer)?;
+    // Is it possible that nud or led returns None? Or is None always a parsing error?
+    let mut left = get_parselet(lexer.next())?.nud(lexer)?;
 
     while rbp_for(lexer.peek()) > current_rbp {
         left = get_parselet(lexer.next())?.led(lexer, left.unwrap())?;
+
     }
 
     match left {
@@ -94,7 +98,7 @@ pub struct IntegerParselet {
 
 impl Parselet for IntegerParselet {
     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-        parse_expression(0, self, lexer)
+        parse_expression(0, lexer)
     }
 
     fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
@@ -112,7 +116,7 @@ pub struct StringParselet {
 
 impl Parselet for StringParselet {
     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-        parse_expression(0, self, lexer)
+        parse_expression(0, lexer)
     }
 
     fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
@@ -120,7 +124,7 @@ impl Parselet for StringParselet {
     }
 
     fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
-        let right = parse_expression(0, &*get_parselet(lexer.next())?, lexer);
+        let right = parse_expression(0,  lexer);
         match right {
             Ok(right) => {
                 Ok(Some(Box::new(PlusExpression::new(
@@ -140,13 +144,12 @@ pub struct PlusParselet {}
 
 impl Parselet for PlusParselet {
     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-        parse_expression(0, self, lexer)
+        parse_expression(0, lexer)
     }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
         let expression = parse_expression(
             0,
-            &*get_parselet(lexer.next())?,
             lexer)?;
         // This does not create extra expression. Side effect is that +"foo" -> "foo".
         Ok(Some(expression))
@@ -154,8 +157,7 @@ impl Parselet for PlusParselet {
 
     fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
         let right = parse_expression(
-            0,
-            &*get_parselet(lexer.next())?,
+            5,
             lexer)?;
 
         Ok(Some(Box::new(PlusExpression::new(
@@ -169,21 +171,19 @@ pub struct MinusParselet {}
 
 impl Parselet for MinusParselet {
     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-        parse_expression(0, self, lexer)
+        parse_expression(0, lexer)
     }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
         let expression = parse_expression(
             5,
-            &*get_parselet(lexer.next())?,
             lexer)?;
         Ok(Some(Box::new(PrefixMinusExpression::new(expression))))
     }
 
     fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
         let right = parse_expression(
-            0,
-            &*get_parselet(lexer.next())?,
+            5,
             lexer)?;
 
         Ok(Some(Box::new(MinusExpression::new(
@@ -197,7 +197,7 @@ pub struct MultiplicationParselet {}
 
 impl Parselet for MultiplicationParselet {
     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-        parse_expression(0, self, lexer)
+        parse_expression(0, lexer)
     }
 
     fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
@@ -207,13 +207,47 @@ impl Parselet for MultiplicationParselet {
     fn led(&self, lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
         let right = parse_expression(
             10,
-            &*get_parselet(lexer.next())?,
             lexer)?;
 
         Ok(Some(Box::new(MultiplicationExpression::new(
             left,
             right,
         ))))
+    }
+}
+
+pub struct LeftParensParselet {}
+
+impl Parselet for LeftParensParselet {
+    fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
+        parse_expression(0, lexer)
+    }
+
+    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        let expr = parse_expression(
+            0,
+            lexer)?;
+        Ok(Some(expr))
+    }
+
+    fn led(&self, _lexer: &mut Lexer, _left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Err( ParseError { msg: "Can't parse ( in NUD position".to_string() } )
+    }
+}
+
+pub struct RightParensParselet {}
+
+impl Parselet for RightParensParselet {
+    fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
+        parse_expression(0, lexer)
+    }
+
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Err( ParseError { msg: "Can't parse ) in prefix position".to_string() } )
+    }
+
+    fn led(&self, _lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Ok(Some(left))
     }
 }
 
@@ -281,6 +315,19 @@ mod tests {
         parses_to("123 + \"Hello world!\"".to_string(), vec![
             Box::new(Value::String("123Hello world!".to_string())),
         ]);
+
+        parses_to("(1 + 2)".to_string(), vec![
+            Box::new(Value::Integer(3)),
+        ]);
+        parses_to("2 * (1 + 2)".to_string(), vec![
+            Box::new(Value::Integer(6)),
+        ]);
+        parses_to("(1 + 2) * 2".to_string(), vec![
+            Box::new(Value::Integer(6)),
+        ]);
+        parses_to("(1 + 2) * (( 2 + 4 ) * 2)".to_string(), vec![
+            Box::new(Value::Integer(36)),
+        ]);
     }
 
     fn parses_to(input: String, expected_output: Vec<Box<dyn Expression>>) {
@@ -299,7 +346,9 @@ mod tests {
                             .unwrap_or_else(|_| panic!("nonono")),
                         received_expression
                             .evaluate(&mut scope)
-                            .unwrap_or_else(|_| panic!("nonono"))
+                            .unwrap_or_else(|_| panic!("nonono")),
+                        "Input was: {}",
+                        input
                     );
                 }
             },

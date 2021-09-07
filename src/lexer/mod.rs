@@ -376,6 +376,7 @@ fn is_delimiting(c: &char) -> bool {
         ')' => true,
         '+' => true,
         '-' => true,
+        '*' => true,
         '/' => true,
         ',' => true,
         '.' => true,
@@ -597,6 +598,11 @@ mod tests {
             dummy_token(Integer(2)),
         ]);
         with_input_lexes_to("1 * 2", vec![
+            dummy_token(Integer(1)),
+            dummy_token(Multiplication),
+            dummy_token(Integer(2)),
+        ]);
+        with_input_lexes_to("1*2", vec![
             dummy_token(Integer(1)),
             dummy_token(Multiplication),
             dummy_token(Integer(2)),

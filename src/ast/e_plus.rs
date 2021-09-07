@@ -24,6 +24,12 @@ impl Expression for PlusExpression {
         let result = left_res.apply_plus(&right_res)?;
         Ok(Box::new(result))
     }
+
+    fn visualize(&self, level: usize) {
+        println!("{} PlusExpression", "-".repeat(level));
+        self.left.visualize(level + 1);
+        self.right.visualize(level + 1);
+    }
 }
 
 #[cfg(test)]
