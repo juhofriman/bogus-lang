@@ -1,8 +1,9 @@
-use crate::lexer::tokens::{Token, TokenKind, create_token, SourceRef};
+pub mod tokens;
+
+use tokens::{Token, TokenKind, create_token, SourceRef };
+
 use core::fmt;
 use crate::lexer::ShouldContinue::{BailOut, Continue};
-
-mod tokens;
 
 /// Consumable lexer instance, create with create_lexer()
 pub struct Lexer {
@@ -40,6 +41,15 @@ impl Lexer {
     pub fn next(&mut self) -> Option<&Token> {
         let token = self.tokens.get(self.pointer);
         self.pointer += 1;
+        token
+    }
+
+    pub fn current(&self) -> Option<&Token> {
+        if self.pointer == 0 {
+            let token = self.tokens.get(self.pointer);
+            return token
+        }
+        let token = self.tokens.get(self.pointer - 1);
         token
     }
 
@@ -196,6 +206,7 @@ impl LexBuffer {
                         char_is_not(peek, '>'))),
                     "+" => Ok(Some(self.pop_buffer(TokenKind::Plus))),
                     "/" => Ok(Some(self.pop_buffer(TokenKind::Division))),
+                    "*" => Ok(Some(self.pop_buffer(TokenKind::Multiplication))),
                     "->" => Ok(Some(self.pop_buffer(TokenKind::Arrow))),
                     ";" => Ok(Some(self.pop_buffer(TokenKind::Semicolon))),
                     "=" => Ok(self.pop_buffer_cond(
@@ -374,6 +385,7 @@ fn is_delimiting(c: &char) -> bool {
         ')' => true,
         '+' => true,
         '-' => true,
+        '*' => true,
         '/' => true,
         ',' => true,
         '.' => true,
@@ -406,7 +418,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication};
 
     // Internal implementation test helpers
 
@@ -501,6 +513,7 @@ mod tests {
         token_lexes_to("-", Minus);
         token_lexes_to("+", Plus);
         token_lexes_to("/", Division);
+        token_lexes_to("*", Multiplication);
         token_lexes_to(",", Comma);
         token_lexes_to(".", Dot);
     }
@@ -591,6 +604,16 @@ mod tests {
         with_input_lexes_to("1 / 2", vec![
             dummy_token(Integer(1)),
             dummy_token(Division),
+            dummy_token(Integer(2)),
+        ]);
+        with_input_lexes_to("1 * 2", vec![
+            dummy_token(Integer(1)),
+            dummy_token(Multiplication),
+            dummy_token(Integer(2)),
+        ]);
+        with_input_lexes_to("1*2", vec![
+            dummy_token(Integer(1)),
+            dummy_token(Multiplication),
             dummy_token(Integer(2)),
         ]);
         with_input_lexes_to("1 == 2", vec![

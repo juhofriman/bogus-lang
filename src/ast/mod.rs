@@ -1,6 +1,6 @@
 use crate::ast::m_null::NullMatcher;
 use crate::ast::scope::Scope;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Debug};
 
 mod m_integer;
 mod m_string;
@@ -9,6 +9,7 @@ pub mod e_plus;
 pub mod e_minus;
 pub mod scope;
 pub mod s_let;
+pub mod e_multiplication;
 
 /// Common error in evaluation
 #[derive(Debug)]
@@ -25,17 +26,21 @@ impl Display for EvalError {
 /// Expression has evaluate(&self). Evaluating expression returns Boxed Value.
 pub trait Expression {
     fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError>;
+    fn visualize(&self, level: usize);
 }
 
 /// Operable gives possibility to apply operators. Operations return NEW Value.
 pub trait Operable {
     fn apply_plus(&self, other: &Value) -> Result<Value, EvalError>;
     fn apply_minus(&self, other: &Value) -> Result<Value, EvalError>;
+    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError>;
+
+    fn apply_prefix_minus(&self) -> Result<Value, EvalError>;
 
     // ... and all operators will eventually follow ...
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Value {
     Identifier(String),
 
@@ -54,6 +59,23 @@ impl Value {
             Value::String(_) => "String",
             Value::Null => "Null",
             Value::Void => "Void",
+        }
+    }
+}
+
+impl Debug for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Identifier(val) =>
+                write!(f, "Identifier({})", val),
+            Value::Integer(val) =>
+                write!(f, "Integer({})", val),
+            Value::String(val) =>
+                write!(f, "String({})", val),
+            Value::Null =>
+                write!(f, "{}", self.type_name()),
+            Value::Void =>
+                write!(f, "{}", self.type_name()),
         }
     }
 }
@@ -91,6 +113,9 @@ impl Expression for Value {
             _ => Ok(Box::new(self.clone()))
         }
     }
+    fn visualize(&self, level: usize) {
+        println!("{} {:?}", "-".repeat(level), self)
+    }
 }
 
 impl Operable for Value {
@@ -99,6 +124,12 @@ impl Operable for Value {
     }
     fn apply_minus(&self, other: &Value) -> Result<Value, EvalError> {
         Ok(matcher_from_value(self).apply_minus(other)?)
+    }
+    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError> {
+        Ok(matcher_from_value(self).apply_multiplication(other)?)
+    }
+    fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
+        Ok(matcher_from_value(self).apply_prefix_minus()?)
     }
 }
 
@@ -124,6 +155,20 @@ pub trait OperatorApplyMatcher {
         }
     }
 
+    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError> {
+        match other {
+            Value::Integer(val) => self.apply_multiplication_with_integer(val),
+            Value::String(val) => self.apply_multiplication_with_string(val),
+            Value::Null => self.apply_multiplication_with_null(),
+            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
+        }
+    }
+
+    fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply - {}", self.name()) })
+    }
+
+
     fn apply_plus_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
         Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Integer") })
     }
@@ -146,6 +191,18 @@ pub trait OperatorApplyMatcher {
 
     fn apply_minus_with_null(&self) -> Result<Value, EvalError> {
         Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "Null") })
+    }
+
+    fn apply_multiplication_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "Integer") })
+    }
+
+    fn apply_multiplication_with_string(&self, _other: &String) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "String") })
+    }
+
+    fn apply_multiplication_with_null(&self) -> Result<Value, EvalError> {
+        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "Null") })
     }
 }
 
