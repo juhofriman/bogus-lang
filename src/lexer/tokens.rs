@@ -1,9 +1,31 @@
 use std::fmt::{Display, Formatter};
+use crate::parser::ParseError;
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
     pub source_ref: SourceRef,
     pub token_kind: TokenKind,
+}
+
+impl Token {
+
+    pub fn is_identifier(&self) -> Result<String, ParseError> {
+        match &self.token_kind {
+            TokenKind::Identifier(name) => Ok(name.to_string()),
+            _ => Err( ParseError {
+                msg: format!("Expecting Identifier but {} found", self)
+            })
+        }
+    }
+
+    pub fn is_assing(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::Assign => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting Identifier but {} found", self)
+            })
+        }
+    }
 }
 
 impl Display for Token {

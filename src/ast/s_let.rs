@@ -26,8 +26,9 @@ impl Expression for LetStatement {
         scope.store(self.identifier.as_str(), *value);
         Ok(Box::new(Value::Void))
     }
-    fn visualize(&self, _level: usize) {
-        todo!()
+    fn visualize(&self, level: usize) {
+        println!("{} LetStatement `{}`", "-".repeat(level), self.identifier);
+        self.expression.visualize(level + 1);
     }
 }
 

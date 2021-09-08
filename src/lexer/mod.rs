@@ -44,6 +44,15 @@ impl Lexer {
         token
     }
 
+    pub fn current(&self) -> Option<&Token> {
+        if self.pointer == 0 {
+            let token = self.tokens.get(self.pointer);
+            return token
+        }
+        let token = self.tokens.get(self.pointer - 1);
+        token
+    }
+
     /// Peeks next token without advancing the lexer
     pub fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.pointer)

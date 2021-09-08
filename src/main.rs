@@ -25,6 +25,7 @@ fn prompt(repl_mode: &ReplMode) -> &str {
 fn main() {
     let mut repl_mode = ReplMode::Normal;
     let mut rl = Editor::<()>::new();
+    let mut scope = Scope::new();
     loop {
         let readline = rl.readline(prompt(&repl_mode));
         match readline {
@@ -50,7 +51,7 @@ fn main() {
                                 ast_input(&line);
                             }
                             ReplMode::Normal => {
-                                eval(&line);
+                                eval(&line, &mut scope);
                             }
                         }
                     }
@@ -107,16 +108,16 @@ fn ast_input(input: &str) {
     }
 }
 
-fn eval(input: &str) {
+fn eval(input: &str, scope: &mut Scope) {
 
     match Lexer::new(input) {
         Ok(mut lexer) => {
             let mut parser = Parser::new(&mut lexer);
             match parser.parse() {
                 Ok(things) => {
-                    let mut scope = Scope::new();
+
                     for thing in things {
-                        match thing.evaluate(&mut scope) {
+                        match thing.evaluate(scope) {
                             Ok(res) => {
                                 println!("{}", res);
                             },

@@ -4,9 +4,10 @@ use crate::ast::{Expression, Value};
 use crate::ast::e_plus::PlusExpression;
 use crate::ast::e_minus::{MinusExpression, PrefixMinusExpression};
 use crate::ast::e_multiplication::MultiplicationExpression;
+use crate::ast::s_let::LetStatement;
 
 pub struct ParseError {
-    msg: String,
+    pub msg: String,
 }
 
 impl std::fmt::Display for ParseError {
@@ -40,6 +41,7 @@ impl Parser<'_> {
 fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> {
     if let Some(token) = token {
         return match &token.token_kind {
+            TokenKind::Identifier(name) => Ok(Box::new(IdentifierParselet { value: name.clone() })),
             TokenKind::Integer(value) => Ok(Box::new(IntegerParselet { value: *value })),
             TokenKind::Str(value) => Ok(Box::new(StringParselet { value: value.clone() })),
             TokenKind::Plus => Ok(Box::new(PlusParselet {})),
@@ -47,6 +49,8 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
             TokenKind::Multiplication => Ok(Box::new(MultiplicationParselet {})),
             TokenKind::LeftParens => Ok(Box::new(LeftParensParselet {})),
             TokenKind::RightParens => Ok(Box::new(RightParensParselet {})),
+            TokenKind::Let => Ok(Box::new(LetParselet {})),
+            TokenKind::Semicolon => Ok(Box::new(SemicolonParselet {})),
             _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
         };
     }
@@ -56,12 +60,15 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
 fn rbp_for(token: Option<&Token>) -> u32 {
     if let Some(token) = token {
         return match token.token_kind {
-            TokenKind::Integer(_) => 2,
+            TokenKind::Identifier(_) => 0,
+            TokenKind::Integer(_) => 0,
             TokenKind::Plus => 5,
             TokenKind::Minus => 5,
             TokenKind::Multiplication => 10,
             TokenKind::LeftParens => 50,
             TokenKind::RightParens => 1,
+            TokenKind::Let => 0,
+            TokenKind::Semicolon => 1,
             _ => { panic!("rbp (right binding power) is not defined for {:?}", token); }
         };
     }
@@ -78,16 +85,34 @@ fn parse_expression(
     current_rbp: u32,
     lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
     // Is it possible that nud or led returns None? Or is None always a parsing error?
+
     let mut left = get_parselet(lexer.next())?.nud(lexer)?;
 
     while rbp_for(lexer.peek()) > current_rbp {
         left = get_parselet(lexer.next())?.led(lexer, left.unwrap())?;
-
     }
 
     match left {
         Some(expr) => Ok(expr),
         None => Err(ParseError { msg: "left was None".to_string() })
+    }
+}
+
+pub struct IdentifierParselet {
+    pub value: String,
+}
+
+impl Parselet for IdentifierParselet {
+    fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
+        parse_expression(0, lexer)
+    }
+
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Ok(Some(Box::new(Value::Identifier(self.value.clone()))))
+    }
+
+    fn led(&self, _lexer: &mut Lexer, _left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Err(ParseError { msg: "Can't parse identifier in LED position".to_string() })
     }
 }
 
@@ -251,6 +276,53 @@ impl Parselet for RightParensParselet {
     }
 }
 
+pub struct LetParselet {}
+
+impl Parselet for LetParselet {
+    fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
+        parse_expression(0, lexer)
+    }
+
+    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        match lexer.next() {
+            Some(token) => {
+                let identifier = token.is_identifier()?;
+                lexer.next()
+                    .ok_or(ParseError { msg: "Expecting = but EOF encountered".to_string() })?
+                    .is_assing()?;
+                let expr = parse_expression(
+                    0,
+                    lexer)?;
+                Ok(Some(Box::new(LetStatement::new(
+                    Value::Identifier(identifier),
+                    expr,
+                ))))
+            },
+            None => Err( ParseError { msg: "Expecting identifier but EOF encountered".to_string() } )
+        }
+    }
+
+    fn led(&self, _lexer: &mut Lexer, _left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Err( ParseError { msg: "Can't parse let in infix position".to_string() } )
+    }
+}
+
+pub struct SemicolonParselet {}
+
+impl Parselet for SemicolonParselet {
+    fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
+        parse_expression(0, lexer)
+    }
+
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Err( ParseError { msg: "Can't parse ; in prefix position".to_string() } )
+    }
+
+    fn led(&self, _lexer: &mut Lexer, left: Box<dyn Expression>) -> Result<Option<Box<dyn Expression>>, ParseError> {
+        Ok(Some(left))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -327,6 +399,37 @@ mod tests {
         ]);
         parses_to("(1 + 2) * (( 2 + 4 ) * 2)".to_string(), vec![
             Box::new(Value::Integer(36)),
+        ]);
+    }
+
+    #[test]
+    fn parse_let_statement() {
+        parses_to("let a = 1".to_string(), vec![
+            Box::new(Value::Void),
+        ]);
+        parses_to("let a = 1;".to_string(), vec![
+            Box::new(Value::Void),
+        ]);
+        parses_to("let a = 1; let b = 2;".to_string(), vec![
+            Box::new(Value::Void),
+            Box::new(Value::Void),
+        ]);
+        parses_to("let a = 1; let b = 2".to_string(), vec![
+            Box::new(Value::Void),
+            Box::new(Value::Void),
+        ]);
+    }
+
+    #[test]
+    fn parse_weird_expressions() {
+        parses_to("1 + 2; 2+3;".to_string(), vec![
+            Box::new(Value::Integer(3)),
+            Box::new(Value::Integer(5)),
+        ]);
+        parses_to("let a = 5; 1 + 2; let c = 2+3;".to_string(), vec![
+            Box::new(Value::Void),
+            Box::new(Value::Integer(3)),
+            Box::new(Value::Void),
         ]);
     }
 
