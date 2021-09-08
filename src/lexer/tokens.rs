@@ -87,6 +87,7 @@ pub enum TokenKind {
     Integer(i32),
     Float(f32),
     Str(String),
+    Null,
 }
 
 #[cfg(test)]

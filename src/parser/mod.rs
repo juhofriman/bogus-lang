@@ -10,6 +10,7 @@ use crate::parser::p_v_integer::IntegerParselet;
 use crate::parser::p_v_string::StringParselet;
 use crate::parser::p_s_let::LetParselet;
 use crate::parser::p_d_semicolon::SemicolonParselet;
+use crate::parser::p_v_null::NullParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -20,6 +21,7 @@ mod p_v_integer;
 mod p_v_string;
 mod p_s_let;
 mod p_d_semicolon;
+mod p_v_null;
 
 pub struct ParseError {
     pub msg: String,
@@ -66,6 +68,7 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
             TokenKind::RightParens => Ok(Box::new(RightParensParselet {})),
             TokenKind::Let => Ok(Box::new(LetParselet {})),
             TokenKind::Semicolon => Ok(Box::new(SemicolonParselet {})),
+            TokenKind::Null => Ok(Box::new(NullParselet {})),
             _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
         };
     }
@@ -189,6 +192,13 @@ mod tests {
         ]);
         parses_to("(1 + 2) * (( 2 + 4 ) * 2)".to_string(), vec![
             Box::new(Value::Integer(36)),
+        ]);
+
+        parses_to("null".to_string(), vec![
+            Box::new(Value::Null),
+        ]);
+        parses_to("null + \"foo\"".to_string(), vec![
+            Box::new(Value::String("nullfoo".to_string())),
         ]);
     }
 

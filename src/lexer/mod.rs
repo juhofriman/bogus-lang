@@ -197,6 +197,9 @@ impl LexBuffer {
                     "fun" => Ok(self.pop_buffer_cond(
                         TokenKind::Fun,
                         is_delimiting_opt(peek))),
+                    "null" => Ok(self.pop_buffer_cond(
+                        TokenKind::Null,
+                        is_delimiting_opt(peek))),
                     "(" => Ok(Some(self.pop_buffer(TokenKind::LeftParens))),
                     ")" => Ok(Some(self.pop_buffer(TokenKind::RightParens))),
                     "," => Ok(Some(self.pop_buffer(TokenKind::Comma))),
@@ -418,7 +421,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null};
 
     // Internal implementation test helpers
 
@@ -516,6 +519,7 @@ mod tests {
         token_lexes_to("*", Multiplication);
         token_lexes_to(",", Comma);
         token_lexes_to(".", Dot);
+        token_lexes_to("null", Null);
     }
 
     #[test]
@@ -625,6 +629,11 @@ mod tests {
             dummy_token(Integer(1)),
             dummy_token(Equals),
             dummy_token(Integer(2)),
+        ]);
+        with_input_lexes_to("null + null", vec![
+            dummy_token(Null),
+            dummy_token(Plus),
+            dummy_token(Null),
         ]);
     }
 
