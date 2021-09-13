@@ -6,6 +6,9 @@ pub mod v_integer;
 pub mod scope;
 pub mod e_plus;
 pub mod e_identifier;
+pub mod s_fun;
+pub mod e_call;
+mod v_void;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -17,6 +20,9 @@ impl EvaluationError {
         EvaluationError {
             msg,
         }
+    }
+    pub fn not_callable(me: TypeMatcher) -> EvaluationError {
+        EvaluationError::new(format!("{} is not callable", me))
     }
     pub fn cant_resolve(name: &str) -> EvaluationError {
         EvaluationError::new(format!("Can't resolve variable `{}`", name))
@@ -37,6 +43,8 @@ impl EvaluationError {
 pub enum TypeMatcher<'a> {
     Integer(&'a i32),
     Null,
+    Void,
+    Function,
 }
 
 impl Display for TypeMatcher<'_> {
@@ -44,6 +52,8 @@ impl Display for TypeMatcher<'_> {
         match self {
             TypeMatcher::Integer(_) => write!(f, "Integer"),
             TypeMatcher::Null => write!(f, "Null"),
+            TypeMatcher::Void => write!(f, "Void"),
+            TypeMatcher::Function => write!(f, "Fn"),
         }
     }
 }
@@ -72,6 +82,9 @@ pub trait Value {
             self.type_matcher(),
             other.type_matcher()))
     }
+    fn call(&self, _scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::not_callable(self.type_matcher()))
+    }
 }
 
 #[cfg(test)]
@@ -89,8 +102,18 @@ mod tests {
         }
     }
 
+    pub fn evaluates_to_void(result: Result<Rc<dyn Value>, EvaluationError>) {
+        match result {
+            Ok(val) => match val.type_matcher() {
+                TypeMatcher::Void => (),
+                t => panic!("Expecting Void, but {} received", t)
+            },
+            Err(e) => panic!("Unexpected err: {:?}", e)
+        }
+    }
+
     pub fn errors_to(result: Result<Rc<dyn Value>, EvaluationError>,
-                        expected_msg: &str) {
+                     expected_msg: &str) {
         match result {
             Ok(val) =>
                 panic!("Expected evaluation to fail, but got: {:?}", val.type_matcher()),
