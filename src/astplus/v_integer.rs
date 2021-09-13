@@ -10,6 +10,11 @@ impl IntegerExpression {
             value,
         }
     }
+    pub fn boxed(value: i32) -> Box<IntegerExpression> {
+        Box::new(IntegerExpression {
+            value,
+        })
+    }
 }
 
 impl Expression for IntegerExpression {
@@ -35,11 +40,22 @@ impl Value for IntegerValue {
     fn type_matcher(&self) -> TypeMatcher {
         TypeMatcher::Integer(&self.value)
     }
+
+    fn apply_plus(&self, other: Box<dyn Value>) -> Result<Box<dyn Value>, EvaluationError> {
+        match other.type_matcher() {
+            TypeMatcher::Integer(other_value) =>
+                Ok(IntegerValue::boxed_value(self.value + other_value)),
+
+            _ => Err(EvaluationError::operator_not_applicable(
+                "+",
+                self.type_matcher(),
+                other.type_matcher()))
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
     use crate::astplus::tests::evaluates_to;

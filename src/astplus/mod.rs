@@ -1,7 +1,9 @@
 use crate::astplus::scope::Scope;
+use std::fmt::{Display, Formatter};
 
 pub mod v_integer;
 pub mod scope;
+pub mod e_plus;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -9,10 +11,20 @@ pub struct EvaluationError {
 }
 
 impl EvaluationError {
-    pub fn new(msg: &str) -> EvaluationError {
+    pub fn new(msg: String) -> EvaluationError {
         EvaluationError {
-            msg: msg.to_string()
+            msg,
         }
+    }
+    pub fn operator_not_applicable(
+        operator: &str,
+        me: TypeMatcher,
+        he_or_she: TypeMatcher) -> EvaluationError {
+        EvaluationError::new(
+            format!("Can't apply {} {} {}",
+                    me,
+                operator,
+                    he_or_she))
     }
 }
 
@@ -20,6 +32,15 @@ impl EvaluationError {
 pub enum TypeMatcher<'a> {
     Integer(&'a i32),
     Null,
+}
+
+impl Display for TypeMatcher<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeMatcher::Integer(_) => write!(f, "Integer"),
+            TypeMatcher::Null => write!(f, "Null"),
+        }
+    }
 }
 
 impl PartialEq for TypeMatcher<'_> {
@@ -40,6 +61,12 @@ pub trait Expression {
 
 pub trait Value {
     fn type_matcher(&self) -> TypeMatcher;
+    fn apply_plus(&self, other: Box<dyn Value>) ->  Result<Box<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "+",
+            self.type_matcher(),
+            other.type_matcher()))
+    }
 }
 
 #[cfg(test)]
