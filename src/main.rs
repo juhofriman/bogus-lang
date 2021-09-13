@@ -7,6 +7,7 @@ use crate::parser::Parser;
 mod lexer;
 mod ast;
 mod parser;
+mod astplus;
 
 enum ReplMode {
     Normal,
