@@ -1,4 +1,5 @@
 use crate::astplus::{Expression, Scope, Value, EvaluationError, TypeMatcher};
+use std::rc::Rc;
 
 pub struct IntegerExpression {
     value: i32,
@@ -10,16 +11,16 @@ impl IntegerExpression {
             value,
         }
     }
-    pub fn boxed(value: i32) -> Box<IntegerExpression> {
-        Box::new(IntegerExpression {
+    pub fn rc(value: i32) -> Rc<IntegerExpression> {
+        Rc::new(IntegerExpression {
             value,
         })
     }
 }
 
 impl Expression for IntegerExpression {
-    fn evaluate(&self, _: &mut Scope) -> Result<Box<dyn Value>, EvaluationError> {
-        Ok(IntegerValue::boxed_from(self))
+    fn evaluate(&self, _: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
+        Ok(IntegerValue::rc_from(self))
     }
 }
 
@@ -28,27 +29,24 @@ pub struct IntegerValue {
 }
 
 impl IntegerValue {
-    pub fn boxed_from(expr: &IntegerExpression) -> Box<dyn Value> {
-        Box::new(IntegerValue { value: expr.value })
+    pub fn rc_from(expr: &IntegerExpression) -> Rc<dyn Value> {
+        Rc::new(IntegerValue { value: expr.value })
     }
-    pub fn boxed_value(value: i32) -> Box<dyn Value> {
-        Box::new(IntegerValue { value })
+    pub fn rc_value(value: i32) -> Rc<dyn Value> {
+        Rc::new(IntegerValue { value })
     }
 }
 
 impl Value for IntegerValue {
-    fn value_clone(&self) -> Box<dyn Value> {
-        IntegerValue::boxed_value(self.value)
-    }
 
     fn type_matcher(&self) -> TypeMatcher {
         TypeMatcher::Integer(&self.value)
     }
 
-    fn apply_plus(&self, other: Box<dyn Value>) -> Result<Box<dyn Value>, EvaluationError> {
+    fn apply_plus(&self, other: Rc<dyn Value>) -> Result<Rc<dyn Value>, EvaluationError> {
         match other.type_matcher() {
             TypeMatcher::Integer(other_value) =>
-                Ok(IntegerValue::boxed_value(self.value + other_value)),
+                Ok(IntegerValue::rc_value(self.value + other_value)),
 
             _ => Err(EvaluationError::operator_not_applicable(
                 "+",
@@ -67,12 +65,12 @@ mod tests {
     #[test]
     fn test_integer_equals() {
         assert_eq!(
-            IntegerValue::boxed_value(1).type_matcher(),
-            IntegerValue::boxed_value(1).type_matcher(),
+            IntegerValue::rc_value(1).type_matcher(),
+            IntegerValue::rc_value(1).type_matcher(),
         );
         assert_ne!(
-            IntegerValue::boxed_value(1).type_matcher(),
-            IntegerValue::boxed_value(2).type_matcher(),
+            IntegerValue::rc_value(1).type_matcher(),
+            IntegerValue::rc_value(2).type_matcher(),
         );
     }
 
@@ -80,6 +78,6 @@ mod tests {
     fn test_integer_evaluate() {
         let integer_expr = IntegerExpression::new(1);
         evaluates_to(integer_expr.evaluate(&mut Scope::new()),
-                     IntegerValue::boxed_value(1));
+                     IntegerValue::rc_value(1));
     }
 }

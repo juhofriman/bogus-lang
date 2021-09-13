@@ -1,4 +1,5 @@
 use crate::astplus::{Expression, Scope, Value, EvaluationError, TypeMatcher};
+use std::rc::Rc;
 
 pub struct IdentifierExpression {
     value: String,
@@ -10,15 +11,15 @@ impl IdentifierExpression {
             value,
         }
     }
-    pub fn boxed(value: String) -> Box<IdentifierExpression> {
-        Box::new(IdentifierExpression {
+    pub fn rc(value: String) -> Rc<IdentifierExpression> {
+        Rc::new(IdentifierExpression {
             value,
         })
     }
 }
 
 impl Expression for IdentifierExpression {
-    fn evaluate(&self, scope: &mut Scope) -> Result<Box<dyn Value>, EvaluationError> {
+    fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
         match scope.resolve(&self.value) {
             Some(value) => Ok(value),
             None => Err(EvaluationError::cant_resolve(&self.value))
@@ -47,12 +48,12 @@ mod tests {
     #[test]
     fn test_resolve_found() {
         let mut scope = Scope::new();
-        scope.store("foo".to_string(), IntegerValue::boxed_value(1));
+        scope.store("foo".to_string(), IntegerValue::rc_value(1));
         let expr = IdentifierExpression::new("foo".to_string());
 
         evaluates_to(
             expr.evaluate(&mut scope),
-            IntegerValue::boxed_value(1)
+            IntegerValue::rc_value(1)
         )
     }
 }

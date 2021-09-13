@@ -1,13 +1,14 @@
 use crate::astplus::{Expression, Value, EvaluationError};
 use crate::astplus::scope::Scope;
+use std::rc::Rc;
 
 pub struct PlusExpression {
-    left: Box<dyn Expression>,
-    right: Box<dyn Expression>,
+    left: Rc<dyn Expression>,
+    right: Rc<dyn Expression>,
 }
 
 impl PlusExpression {
-    fn new(left: Box<dyn Expression>, right: Box<dyn Expression>) -> PlusExpression {
+    fn new(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> PlusExpression {
         PlusExpression {
             left,
             right,
@@ -16,7 +17,7 @@ impl PlusExpression {
 }
 
 impl Expression for PlusExpression {
-    fn evaluate(&self, scope: &mut Scope) -> Result<Box<dyn Value>, EvaluationError> {
+    fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
         let l_value = self.left.evaluate(scope)?;
         let r_value = self.right.evaluate(scope)?;
 
@@ -35,27 +36,27 @@ mod tests {
     #[test]
     fn test_plus_expression() {
         let expr = PlusExpression::new(
-            IntegerExpression::boxed(1),
-            IntegerExpression::boxed(1),
+            IntegerExpression::rc(1),
+            IntegerExpression::rc(1),
         );
         evaluates_to(
             expr.evaluate(&mut Scope::new()),
-            IntegerValue::boxed_value(2)
+            IntegerValue::rc_value(2)
         );
 
         let expr = PlusExpression::new(
-            Box::new(PlusExpression::new(
-                IntegerExpression::boxed(5),
-                IntegerExpression::boxed(5),
+            Rc::new(PlusExpression::new(
+                IntegerExpression::rc(5),
+                IntegerExpression::rc(5),
             )),
-            Box::new(PlusExpression::new(
-                IntegerExpression::boxed(10),
-                IntegerExpression::boxed(9),
+            Rc::new(PlusExpression::new(
+                IntegerExpression::rc(10),
+                IntegerExpression::rc(9),
             ))
         );
         evaluates_to(
             expr.evaluate(&mut Scope::new()),
-            IntegerValue::boxed_value(29)
+            IntegerValue::rc_value(29)
         );
     }
 
