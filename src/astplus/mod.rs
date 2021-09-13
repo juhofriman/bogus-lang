@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 pub mod v_integer;
 pub mod scope;
 pub mod e_plus;
+pub mod e_identifier;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -15,6 +16,9 @@ impl EvaluationError {
         EvaluationError {
             msg,
         }
+    }
+    pub fn cant_resolve(name: &str) -> EvaluationError {
+        EvaluationError::new(format!("Can't resolve variable `{}`", name))
     }
     pub fn operator_not_applicable(
         operator: &str,
@@ -60,6 +64,7 @@ pub trait Expression {
 }
 
 pub trait Value {
+    fn value_clone(&self) -> Box<dyn Value>;
     fn type_matcher(&self) -> TypeMatcher;
     fn apply_plus(&self, other: Box<dyn Value>) ->  Result<Box<dyn Value>, EvaluationError> {
         Err( EvaluationError::operator_not_applicable(
@@ -75,11 +80,21 @@ mod tests {
     use super::*;
 
     // Internal implementation test helpers
+
     pub fn evaluates_to(result: Result<Box<dyn Value>, EvaluationError>,
                     expected: Box<dyn Value>) {
         match result {
             Ok(val) => assert_eq!(val.type_matcher(), expected.type_matcher()),
             Err(e) => panic!("Unexpected err: {:?}", e)
+        }
+    }
+
+    pub fn errors_to(result: Result<Box<dyn Value>, EvaluationError>,
+                        expected_msg: &str) {
+        match result {
+            Ok(val) =>
+                panic!("Expected evaluation to fail, but got: {:?}", val.type_matcher()),
+            Err(e) => assert_eq!(e.msg, expected_msg),
         }
     }
 }

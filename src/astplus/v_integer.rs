@@ -37,6 +37,10 @@ impl IntegerValue {
 }
 
 impl Value for IntegerValue {
+    fn value_clone(&self) -> Box<dyn Value> {
+        IntegerValue::boxed_value(self.value)
+    }
+
     fn type_matcher(&self) -> TypeMatcher {
         TypeMatcher::Integer(&self.value)
     }
