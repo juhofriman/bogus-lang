@@ -1,237 +1,113 @@
-use crate::ast::m_null::NullMatcher;
 use crate::ast::scope::Scope;
-use std::fmt::{Display, Formatter, Debug};
+use std::fmt::{Display, Formatter};
+use std::rc::Rc;
 
-mod m_integer;
-mod m_string;
-mod m_null;
-pub mod e_plus;
-pub mod e_minus;
+pub mod v_integer;
 pub mod scope;
+pub mod e_plus;
+pub mod e_identifier;
+pub mod s_fun;
+pub mod e_call;
+mod v_void;
+pub mod e_minus;
 pub mod s_let;
 pub mod e_multiplication;
 
-/// Common error in evaluation
 #[derive(Debug)]
-pub struct EvalError {
+pub struct EvaluationError {
     msg: String,
 }
 
-impl Display for EvalError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Eval Error: {}", self.msg)
+impl EvaluationError {
+    pub fn new(msg: String) -> EvaluationError {
+        EvaluationError {
+            msg,
+        }
+    }
+    pub fn not_callable(me: TypeMatcher) -> EvaluationError {
+        EvaluationError::new(format!("{} is not callable", me))
+    }
+    pub fn cant_resolve(name: &str) -> EvaluationError {
+        EvaluationError::new(format!("Can't resolve variable `{}`", name))
+    }
+    pub fn does_not_support_prefix_minus(me: TypeMatcher) -> EvaluationError {
+        EvaluationError::new(format!("{} does not support prefix minus", me))
+    }
+    pub fn operator_not_applicable(
+        operator: &str,
+        me: TypeMatcher,
+        he_or_she: TypeMatcher) -> EvaluationError {
+        EvaluationError::new(
+            format!("Can't apply {} {} {}",
+                    me,
+                operator,
+                    he_or_she))
     }
 }
 
-/// Expression has evaluate(&self). Evaluating expression returns Boxed Value.
+#[derive(Debug, PartialEq)]
+pub enum TypeMatcher<'a> {
+    Integer(&'a i32),
+    Null,
+    Void,
+    Function,
+}
+
+impl Display for TypeMatcher<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeMatcher::Integer(v) => write!(f, "Integer({})", v),
+            TypeMatcher::Null => write!(f, "Null"),
+            TypeMatcher::Void => write!(f, "Void"),
+            TypeMatcher::Function => write!(f, "Fn"),
+        }
+    }
+}
+
+// Hmm, programmatic equality should be in Value trait, this way TypeMatcher can
+// be used for test assertions (Void and such)
+// impl PartialEq for TypeMatcher<'_> {
+//     fn eq(&self, other: &Self) -> bool {
+//         match self {
+//             TypeMatcher::Integer(self_val) => match other {
+//                 TypeMatcher::Integer(other_val) => self_val == other_val,
+//                 _ => false,
+//             },
+//             _ => panic!("PartialEq not implemented for {:?}", self)
+//         }
+//     }
+// }
+
 pub trait Expression {
-    fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError>;
+    fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError>;
     fn visualize(&self, level: usize);
 }
 
-/// Operable gives possibility to apply operators. Operations return NEW Value.
-pub trait Operable {
-    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError>;
-    fn apply_minus(&self, other: &Value) -> Result<Value, EvalError>;
-    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError>;
-
-    fn apply_prefix_minus(&self) -> Result<Value, EvalError>;
-
-    // ... and all operators will eventually follow ...
-}
-
-#[derive(PartialEq, Clone)]
-pub enum Value {
-    Identifier(String),
-
-    Integer(i32),
-    String(String),
-
-    Null,
-    Void,
-}
-
-impl Value {
-    fn type_name(&self) -> &'static str {
-        match self {
-            Value::Identifier(_) => "Identifier",
-            Value::Integer(_) => "Integer",
-            Value::String(_) => "String",
-            Value::Null => "Null",
-            Value::Void => "Void",
-        }
+pub trait Value {
+    fn type_matcher(&self) -> TypeMatcher;
+    fn apply_prefix_minus(&self) -> Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::does_not_support_prefix_minus(self.type_matcher()))
     }
-}
-
-impl Debug for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::Identifier(val) =>
-                write!(f, "Identifier({})", val),
-            Value::Integer(val) =>
-                write!(f, "Integer({})", val),
-            Value::String(val) =>
-                write!(f, "String({})", val),
-            Value::Null =>
-                write!(f, "{}", self.type_name()),
-            Value::Void =>
-                write!(f, "{}", self.type_name()),
-        }
+    fn apply_plus(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "+",
+            self.type_matcher(),
+            other.type_matcher()))
     }
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::Identifier(val) =>
-                write!(f, "{}", val),
-            Value::Integer(val) =>
-                write!(f, "{}", val),
-            Value::String(val) =>
-                write!(f, "{}", val),
-            Value::Null =>
-                write!(f, "{}", self.type_name()),
-            Value::Void =>
-                write!(f, "{}", self.type_name()),
-        }
+    fn apply_minus(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "-",
+            self.type_matcher(),
+            other.type_matcher()))
     }
-}
-
-impl Expression for Value {
-    fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError> {
-        match self {
-            // Identifiers are resolved from given scope
-            Value::Identifier(name) => {
-                match scope.resolve(name.as_str()) {
-                    Some(value) => Ok(Box::new(value.clone())),
-                    None => Err( EvalError {
-                        msg: format!("Can't resolve identifier '{}'", name)
-                    } )
-                }
-            },
-            // Unfortunately current implementation enforces to clone values when evaluated
-            _ => Ok(Box::new(self.clone()))
-        }
+    fn apply_multiplication(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "*",
+            self.type_matcher(),
+            other.type_matcher()))
     }
-    fn visualize(&self, level: usize) {
-        println!("{} {:?}", "-".repeat(level), self)
-    }
-}
-
-impl Operable for Value {
-    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
-        Ok(matcher_from_value(self).apply_plus(other)?)
-    }
-    fn apply_minus(&self, other: &Value) -> Result<Value, EvalError> {
-        Ok(matcher_from_value(self).apply_minus(other)?)
-    }
-    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError> {
-        Ok(matcher_from_value(self).apply_multiplication(other)?)
-    }
-    fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
-        Ok(matcher_from_value(self).apply_prefix_minus()?)
-    }
-}
-
-pub trait OperatorApplyMatcher {
-
-    fn name(&self) -> &'static str;
-
-    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
-        match other {
-            Value::Integer(val) => self.apply_plus_with_integer(val),
-            Value::String(val) => self.apply_plus_with_string(val),
-            Value::Null => self.apply_plus_with_null(),
-            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
-        }
-    }
-
-    fn apply_minus(&self, other: &Value) -> Result<Value, EvalError> {
-        match other {
-            Value::Integer(val) => self.apply_minus_with_integer(val),
-            Value::String(val) => self.apply_minus_with_string(val),
-            Value::Null => self.apply_minus_with_null(),
-            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
-        }
-    }
-
-    fn apply_multiplication(&self, other: &Value) -> Result<Value, EvalError> {
-        match other {
-            Value::Integer(val) => self.apply_multiplication_with_integer(val),
-            Value::String(val) => self.apply_multiplication_with_string(val),
-            Value::Null => self.apply_multiplication_with_null(),
-            anything => Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), anything.type_name()) })
-        }
-    }
-
-    fn apply_prefix_minus(&self) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply - {}", self.name()) })
-    }
-
-
-    fn apply_plus_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Integer") })
-    }
-
-    fn apply_plus_with_string(&self, _other: &String) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "String") })
-    }
-
-    fn apply_plus_with_null(&self) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), "Null") })
-    }
-
-    fn apply_minus_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "Integer") })
-    }
-
-    fn apply_minus_with_string(&self, _other: &String) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "String") })
-    }
-
-    fn apply_minus_with_null(&self) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} - {}", self.name(), "Null") })
-    }
-
-    fn apply_multiplication_with_integer(&self, _other: &i32) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "Integer") })
-    }
-
-    fn apply_multiplication_with_string(&self, _other: &String) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "String") })
-    }
-
-    fn apply_multiplication_with_null(&self) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} * {}", self.name(), "Null") })
-    }
-}
-
-pub struct Matcher<'a, T> {
-    value: &'a T,
-}
-
-fn matcher_from_value(value: &Value) -> Box<dyn OperatorApplyMatcher + '_> {
-    match value {
-        Value::Integer(value) => Box::new(Matcher { value }),
-        Value::String(value) => Box::new(Matcher { value }),
-        Value::Null => Box::new(NullMatcher {}),
-        _ => Box::new(FailingMatcher { wrapped_type: value.type_name() }),
-    }
-}
-
-/// Failing matcher fails always, this is the default matcher for any value
-/// that do not have own matcher
-struct FailingMatcher {
-    wrapped_type: &'static str,
-}
-
-impl OperatorApplyMatcher for FailingMatcher {
-    fn name(&self) -> &'static str {
-        self.wrapped_type
-    }
-
-    fn apply_plus(&self, other: &Value) -> Result<Value, EvalError> {
-        Err(EvalError { msg: format!("Can't apply {} + {}", self.name(), other.type_name()) })
+    fn call(&self, _scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::not_callable(self.type_matcher()))
     }
 }
 
@@ -239,106 +115,33 @@ impl OperatorApplyMatcher for FailingMatcher {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::ast::scope::Scope;
-    use crate::ast::s_let::LetStatement;
-    use crate::ast::e_plus::PlusExpression;
 
-    pub enum Expected<'a> {
-        EvaluatesTo(Value),
-        ErrorsTo(&'a str)
-    }
+    // Internal implementation test helpers
 
-    pub struct ExpressionTest<'a> {
-        pub expression: Box<dyn Expression>,
-        pub expected: Expected<'a>,
-    }
-
-    #[test]
-    fn test_evaluate_value() {
-        let cases = vec![
-            ExpressionTest {
-                expression: Box::new(Value::Integer(1)),
-                expected: Expected::EvaluatesTo(Value::Integer(1)),
-            },
-            ExpressionTest {
-                expression: Box::new(Value::String("foo".to_string())),
-                expected: Expected::EvaluatesTo(Value::String("foo".to_string())),
-            },
-            ExpressionTest {
-                expression: Box::new(Value::Null),
-                expected: Expected::EvaluatesTo(Value::Null),
-            },
-        ];
-
-        run_expression_tests(cases, None);
-    }
-
-    #[test]
-    fn test_evaluate_identifier() {
-        let mut scope = Scope::new();
-        scope.store("a", Value::Integer(1));
-
-        evals_to(Value::Identifier("a".to_string()).evaluate(&mut scope),
-                 Value::Integer(1));
-
-        fails_to(Value::Identifier("b".to_string()).evaluate(&mut scope),
-                 "Can't resolve identifier 'b'");
-    }
-
-    #[test]
-    fn test_simple_program() {
-        let mut scope = Scope::new();
-        let s1 = LetStatement::new(
-            Value::Identifier("foo".to_string()),
-            Box::new(Value::Integer(1))
-        );
-        let s2 = LetStatement::new(
-            Value::Identifier("bar".to_string()),
-            Box::new(Value::Integer(2))
-        );
-        let s3 = LetStatement::new(
-            Value::Identifier("bax".to_string()),
-            Box::new(PlusExpression::new(
-                Box::new(Value::Identifier("foo".to_string())),
-                Box::new(Value::Identifier("bar".to_string())))),
-        );
-
-        evals_to(s1.evaluate(&mut scope), Value::Void);
-        evals_to(s2.evaluate(&mut scope), Value::Void);
-        evals_to(s3.evaluate(&mut scope), Value::Void);
-
-        assert_eq!(scope.resolve("foo"), Some(&Value::Integer(1)));
-        assert_eq!(scope.resolve("bar"), Some(&Value::Integer(2)));
-        assert_eq!(scope.resolve("bax"), Some(&Value::Integer(3)));
-    }
-
-    pub fn run_expression_tests(cases: Vec<ExpressionTest>, base_scope: Option<&Scope>) {
-        for case in cases {
-            let mut scope = match base_scope {
-                // This needs to clone the given base scope
-                Some(_) => panic!("Base scope not implemented!"),
-                None => Scope::new(),
-            };
-            match case.expected {
-                Expected::EvaluatesTo(value) =>
-                    evals_to(case.expression.evaluate(&mut scope), value),
-                Expected::ErrorsTo(error_msg) =>
-                    fails_to(case.expression.evaluate(&mut scope), error_msg),
-            }
+    pub fn evaluates_to(result: Result<Rc<dyn Value>, EvaluationError>,
+                        expected: Rc<dyn Value>) {
+        match result {
+            Ok(val) => assert_eq!(val.type_matcher(), expected.type_matcher()),
+            Err(e) => panic!("Unexpected err: {:?}", e)
         }
     }
 
-    pub fn evals_to(result: Result<Box<Value>, EvalError>, expected_val: Value) {
+    pub fn evaluates_to_void(result: Result<Rc<dyn Value>, EvaluationError>) {
         match result {
-            Ok(received_val) => assert_eq!(*received_val, expected_val),
-            Err(err) => panic!("Expected value but got Err: {}", err.msg),
+            Ok(val) => match val.type_matcher() {
+                TypeMatcher::Void => (),
+                t => panic!("Expecting Void, but {} received", t)
+            },
+            Err(e) => panic!("Unexpected err: {:?}", e)
         }
     }
 
-    pub fn fails_to(result: Result<Box<Value>, EvalError>, expecter_err: &str) {
+    pub fn errors_to(result: Result<Rc<dyn Value>, EvaluationError>,
+                     expected_msg: &str) {
         match result {
-            Ok(received_val) => panic!("Expected Err but got Value: {:?}", received_val),
-            Err(err) => assert_eq!(err.msg, expecter_err)
+            Ok(val) =>
+                panic!("Expected evaluation to fail, but got: {:?}", val.type_matcher()),
+            Err(e) => assert_eq!(e.msg, expected_msg),
         }
     }
 }

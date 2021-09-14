@@ -1,155 +1,71 @@
-use crate::ast::{Expression, Value, EvalError, Operable};
+use crate::ast::{Expression, Value, EvaluationError};
 use crate::ast::scope::Scope;
+use std::rc::Rc;
 
 pub struct PlusExpression {
-    pub left: Box<dyn Expression>,
-    pub right: Box<dyn Expression>,
-    _private: (),
+    left: Rc<dyn Expression>,
+    right: Rc<dyn Expression>,
 }
 
 impl PlusExpression {
-    pub fn new(left: Box<dyn Expression>, right: Box<dyn Expression>) -> PlusExpression {
+    pub fn new(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> PlusExpression {
         PlusExpression {
             left,
             right,
-            _private: (),
         }
     }
 }
 
 impl Expression for PlusExpression {
-    fn evaluate(&self, scope: &mut Scope) -> Result<Box<Value>, EvalError> {
-        let left_res = self.left.evaluate(scope)?;
-        let right_res = self.right.evaluate(scope)?;
-        let result = left_res.apply_plus(&right_res)?;
-        Ok(Box::new(result))
+    fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
+        let l_value = self.left.evaluate(scope)?;
+        let r_value = self.right.evaluate(scope)?;
+
+        l_value.apply_plus(r_value)
     }
 
     fn visualize(&self, level: usize) {
         println!("{} PlusExpression", "-".repeat(level));
-        self.left.visualize(level + 1);
-        self.right.visualize(level + 1);
+        println!("{} Left", "-".repeat(level + 1));
+        self.left.visualize(level + 2);
+        println!("{} Right", "-".repeat(level + 1));
+        self.right.visualize(level + 2);
     }
 }
 
 #[cfg(test)]
 mod tests {
+
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::ast::tests::{run_expression_tests, ExpressionTest, Expected, evals_to};
-
-    fn create_plus_expression(left: Value, right: Value) -> Box<PlusExpression> {
-        Box::new(PlusExpression::new(
-            Box::new(left),
-            Box::new(right),
-        ))
-    }
+    use crate::ast::tests::evaluates_to;
+    use crate::ast::v_integer::{IntegerExpression, IntegerValue};
 
     #[test]
     fn test_plus_expression() {
-        let cases = vec![
-
-            // int to int
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::Integer(1),
-                    Value::Integer(1),
-                ),
-                expected: Expected::EvaluatesTo(Value::Integer(2)),
-            },
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::Integer(-1),
-                    Value::Integer(1),
-                ),
-                expected: Expected::EvaluatesTo(Value::Integer(0)),
-            },
-
-            // int to string
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::String("foo".to_string()),
-                    Value::Integer(1),
-                ),
-                expected: Expected::EvaluatesTo(Value::String("foo1".to_string())),
-            },
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::String("foo".to_string()),
-                    Value::Integer(-1),
-                ),
-                expected: Expected::EvaluatesTo(Value::String("foo-1".to_string())),
-            },
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::Integer(1),
-                    Value::String("foo".to_string()),
-                ),
-                expected: Expected::EvaluatesTo(Value::String("1foo".to_string())),
-            },
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::Integer(-1),
-                    Value::String("foo".to_string()),
-                ),
-                expected: Expected::EvaluatesTo(Value::String("-1foo".to_string())),
-            },
-
-            // String to String
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::String("foo".to_string()),
-                    Value::String("bar".to_string()),
-                ),
-                expected: Expected::EvaluatesTo(Value::String("foobar".to_string())),
-            },
-
-            // Null to int
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::Integer(1),
-                    Value::Null,
-                ),
-                expected: Expected::ErrorsTo("Can't apply Integer + Null"),
-            },
-            ExpressionTest {
-                expression: create_plus_expression(
-                    Value::Null,
-                    Value::Integer(1),
-                ),
-                expected: Expected::ErrorsTo("Can't apply Null + Integer"),
-            },
-        ];
-
-        run_expression_tests(cases, None);
-    }
-
-    #[test]
-    fn test_nested_expressions() {
-        let mut scope = Scope::new();
         let expr = PlusExpression::new(
-            Box::new(PlusExpression::new(
-                Box::new(Value::Integer(5)),
-                Box::new(Value::Integer(5)),
-            )),
-            Box::new(Value::Integer(1)),
+            IntegerExpression::rc(1),
+            IntegerExpression::rc(1),
         );
-        evals_to(expr.evaluate(&mut scope), Value::Integer(11));
+        evaluates_to(
+            expr.evaluate(&mut Scope::new()),
+            IntegerValue::rc_value(2)
+        );
+
+        let expr = PlusExpression::new(
+            Rc::new(PlusExpression::new(
+                IntegerExpression::rc(5),
+                IntegerExpression::rc(5),
+            )),
+            Rc::new(PlusExpression::new(
+                IntegerExpression::rc(10),
+                IntegerExpression::rc(9),
+            ))
+        );
+        evaluates_to(
+            expr.evaluate(&mut Scope::new()),
+            IntegerValue::rc_value(29)
+        );
     }
 
-    #[test]
-    fn test_with_identifiers() {
-        let mut scope = Scope::new();
-        scope.store("a", Value::Integer(12));
-        scope.store("b", Value::Integer(3));
-        scope.store("c", Value::Integer(1));
-        let expr = PlusExpression::new(
-            Box::new(PlusExpression::new(
-                Box::new(Value::Identifier("a".to_string())),
-                Box::new(Value::Identifier("b".to_string())),
-            )),
-            Box::new(Value::Identifier("c".to_string())),
-        );
-        evals_to(expr.evaluate(&mut scope), Value::Integer(16));
-    }
 }

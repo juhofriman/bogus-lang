@@ -1,37 +1,24 @@
-use std::collections::HashMap;
 use crate::ast::Value;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 pub struct Scope {
-    registry: HashMap<String, Value>
+    registry: HashMap<String, Rc<dyn Value>>,
 }
 
 impl Scope {
-
-    pub fn new() -> Self {
+    pub fn new() -> Scope {
         Scope {
             registry: HashMap::new(),
         }
     }
-
-    pub fn store(&mut self, identifier: &str, value: Value) {
-        self.registry.insert(identifier.to_string(), value);
+    pub fn store(&mut self, name: String, value: Rc<dyn Value>) {
+        self.registry.insert(name, value);
     }
-
-    pub fn resolve(&self, identifier: &str) -> Option<&Value> {
-        self.registry.get(identifier)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
-
-    #[test]
-    fn test_resolve() {
-        let mut scope = Scope::new();
-        scope.store("foo", Value::Integer(1));
-        assert_eq!(scope.resolve("foo"), Some(&Value::Integer(1)));
-        assert_eq!(scope.resolve("bar"), None);
+    pub fn resolve(&self, name: &String) -> Option<Rc<dyn Value>> {
+        match self.registry.get(name) {
+            Some(v) => Some(v.clone()),
+            None => None,
+        }
     }
 }

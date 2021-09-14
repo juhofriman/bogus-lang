@@ -5,8 +5,8 @@ use crate::ast::scope::Scope;
 use crate::parser::Parser;
 
 mod lexer;
-mod ast;
 mod parser;
+mod ast;
 
 enum ReplMode {
     Normal,
@@ -119,10 +119,10 @@ fn eval(input: &str, scope: &mut Scope) {
                     for thing in things {
                         match thing.evaluate(scope) {
                             Ok(res) => {
-                                println!("{}", res);
+                                println!("{}", res.type_matcher());
                             },
                             Err(eval_error) => {
-                                println!("{}", eval_error);
+                                println!("{:?}", eval_error);
                             }
                         }
 
