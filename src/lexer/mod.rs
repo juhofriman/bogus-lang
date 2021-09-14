@@ -4,6 +4,8 @@ use tokens::{Token, TokenKind, create_token, SourceRef };
 
 use core::fmt;
 use crate::lexer::ShouldContinue::{BailOut, Continue};
+use crate::parser::ParseError;
+use crate::lexer::tokens::TokenType;
 
 /// Consumable lexer instance, create with create_lexer()
 pub struct Lexer {
@@ -53,9 +55,35 @@ impl Lexer {
         token
     }
 
+    pub fn current_is(&self, token_type: TokenType) -> bool {
+        match self.current() {
+            Some(token) => {
+                if token_type.token_is(token) {
+                    return true
+                } else {
+                    return false
+                }
+            },
+            None => false
+        }
+    }
+
     /// Peeks next token without advancing the lexer
     pub fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.pointer)
+    }
+
+    pub fn peek_is(&self, token_type: TokenType) -> bool {
+        match self.peek() {
+            Some(token) => {
+                if token_type.token_is(token) {
+                    return true
+                } else {
+                    return false
+                }
+            },
+            None => false
+        }
     }
 
     /// Tells if lexer has next token
@@ -489,7 +517,6 @@ mod tests {
             },
             Err(error) => panic!("create_lexer did not work: {}", error.msg)
         }
-
     }
 
     // Actual lexer tests

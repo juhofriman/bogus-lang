@@ -11,6 +11,7 @@ use crate::parser::p_d_semicolon::SemicolonParselet;
 use crate::parser::p_o_multiplication::MultiplicationParselet;
 use crate::parser::p_d_parens::{LeftParensParselet, RightParensParselet};
 use crate::parser::p_s_fun::FunParselet;
+use crate::parser::p_d_comma::CommaParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -23,6 +24,7 @@ mod p_s_let;
 mod p_d_semicolon;
 mod p_v_null;
 mod p_s_fun;
+mod p_d_comma;
 
 pub struct ParseError {
     pub msg: String,
@@ -70,6 +72,7 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
             TokenKind::Let => Ok(Box::new(LetParselet {})),
             TokenKind::Fun => Ok(Box::new(FunParselet {})),
             TokenKind::Semicolon => Ok(Box::new(SemicolonParselet {})),
+            TokenKind::Comma => Ok(Box::new(CommaParselet {})),
             // TokenKind::Null => Ok(Box::new(NullParselet {})),
             _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
         };
@@ -89,6 +92,7 @@ fn rbp_for(token: Option<&Token>) -> u32 {
             TokenKind::RightParens => 1,
             TokenKind::Let => 0,
             TokenKind::Semicolon => 1,
+            TokenKind::Comma => 0,
             _ => { panic!("rbp (right binding power) is not defined for {:?}", token); }
         };
     }
@@ -227,16 +231,56 @@ mod tests {
             TypeMatcher::Integer(&1),
         ]);
 
-        evaluate_and_assert("fun a(a) -> a", vec![
+        evaluate_and_assert("fun a(b) -> b", vec![
             TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a(b, c) -> b + c", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a(b) -> b;", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a(b, c) -> b + c;", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a(b) -> b; a(1)", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
         ]);
         evaluate_and_assert("fun a(b) -> b; a(1);", vec![
             TypeMatcher::Void,
             TypeMatcher::Integer(&1),
         ]);
-        // evaluate_and_assert("fun a(a, b) -> a + b", vec![
-        //     TypeMatcher::Void,
-        // ]);
+        evaluate_and_assert("fun a(a, b) -> a + b", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a(a, b) -> a + b;", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a(a, b) -> a + b; a(1, 2)", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&3),
+        ]);
+        evaluate_and_assert("fun a(a, b) -> a + b; a(1, 2);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&3),
+        ]);
+        evaluate_and_assert("fun a(a, b, c, d, e) -> a + b + c + d + e; a(1, 2, 3, 4, 5);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&15),
+        ]);
+        evaluate_and_assert("fun a(a) -> a; a(5 * 5);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&25),
+        ]);
+        evaluate_and_assert("fun a(a) -> a; a(5 * 5);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&25),
+        ]);
+        evaluate_and_assert("fun a(a, b) -> a + b; a(5 * 5, 5 + 5);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&35),
+        ]);
     }
 
     #[test]
