@@ -1,10 +1,9 @@
 pub mod tokens;
 
-use tokens::{Token, TokenKind, create_token, SourceRef };
+use tokens::{Token, TokenKind, SourceRef };
 
 use core::fmt;
 use crate::lexer::ShouldContinue::{BailOut, Continue};
-use crate::parser::ParseError;
 use crate::lexer::tokens::TokenType;
 
 /// Consumable lexer instance, create with create_lexer()
@@ -383,7 +382,7 @@ impl LexBuffer {
         self.buffer.clear();
 
         // Create token with token_column_marker (the column that started token)
-        let new_token = create_token(kind,
+        let new_token = Token::new(kind,
                                      self.current_line,
                                      self.token_column_marker);
 
@@ -873,13 +872,13 @@ mod tests {
     /// Creates a token that can be used as a reference in tests
     /// It adds offset to 0, which means that expected column is the one given
     fn token_at(kind: TokenKind, line: u32, column: u32) -> Token {
-        create_token(kind, line, column)
+        Token::new(kind, line, column)
     }
 
     /// Creates dummy token, with source references zeroed
     /// Cannot be used for assertions with line and column references but
     /// is much more fast to write
     fn dummy_token(kind: TokenKind) -> Token {
-        create_token(kind, 0, 0)
+        Token::new(kind, 0, 0)
     }
 }

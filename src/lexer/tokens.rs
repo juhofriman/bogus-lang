@@ -9,6 +9,16 @@ pub struct Token {
 
 impl Token {
 
+    pub fn new(token_kind: TokenKind, line: u32, column: u32) -> Token {
+        Token {
+            token_kind,
+            source_ref: SourceRef {
+                line,
+                column,
+            },
+        }
+    }
+
     pub fn is_identifier(&self) -> Result<String, ParseError> {
         match &self.token_kind {
             TokenKind::Identifier(name) => Ok(name.to_string()),
@@ -58,17 +68,6 @@ impl Token {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?} {}", self.token_kind, self.source_ref)
-    }
-}
-
-/// Creates a token with given kind and source references
-pub fn create_token(token_kind: TokenKind, line: u32, column: u32) -> Token {
-    Token {
-        token_kind,
-        source_ref: SourceRef {
-            line,
-            column,
-        },
     }
 }
 
@@ -193,10 +192,10 @@ mod tests {
 
     #[test]
     fn token_usage() {
-        let tokens = vec![
-            create_token(TokenKind::Let, 0, 0),
-            create_token(TokenKind::Identifier("seppo".to_string()), 0, 3),
-        ];
-        assert_eq!(tokens.len(), 2)
+        let token = Token::new(TokenKind::Let, 0, 0);
+        assert!(TokenType::Let.token_is(&token));
+        assert!(!TokenType::Fun.token_is(&token));
+
+
     }
 }
