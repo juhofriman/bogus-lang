@@ -26,6 +26,33 @@ impl Token {
             })
         }
     }
+
+    pub fn is_left_parens(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::LeftParens => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting LeftParens but {} found", self)
+            })
+        }
+    }
+
+    pub fn is_right_parens(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::RightParens => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting RightParens but {} found", self)
+            })
+        }
+    }
+
+    pub fn is_arrow(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::Arrow => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting -> but {} found", self)
+            })
+        }
+    }
 }
 
 impl Display for Token {
@@ -54,6 +81,75 @@ pub struct SourceRef {
 impl Display for SourceRef {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}:{}]", self.line, self.column)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TokenType {
+    // Reserved words
+    Let,
+    Const,
+    Fun,
+
+    // Operators
+    Assign,
+    Equals,
+    Minus,
+    Plus,
+    Multiplication,
+    Division,
+    Arrow,
+
+    // Delimiters
+    Comma,
+    Dot,
+    Semicolon,
+    LeftParens,
+    RightParens,
+
+    // Identifier
+    Identifier,
+
+    // Literals
+    Integer,
+    Float,
+    Str,
+    Null,
+}
+
+impl TokenType {
+    pub fn token_is(&self, token: &Token) -> bool {
+        match &token.token_kind {
+            // Reserved words
+            TokenKind::Let => self == &TokenType::Let,
+            TokenKind::Const => self == &TokenType::Const,
+            TokenKind::Fun => self == &TokenType::Fun,
+
+            // Operators
+            TokenKind::Assign => self == &TokenType::Assign,
+            TokenKind::Equals => self == &TokenType::Equals,
+            TokenKind::Minus => self == &TokenType::Minus,
+            TokenKind::Plus => self == &TokenType::Plus,
+            TokenKind::Multiplication => self == &TokenType::Multiplication,
+            TokenKind::Division => self == &TokenType::Division,
+            TokenKind::Arrow => self == &TokenType::Arrow,
+
+            // Delimiters
+            TokenKind::Comma => self == &TokenType::Comma,
+            TokenKind::Dot => self == &TokenType::Dot,
+            TokenKind::Semicolon => self == &TokenType::Semicolon,
+            TokenKind::LeftParens => self == &TokenType::LeftParens,
+            TokenKind::RightParens => self == &TokenType::RightParens,
+
+            // Identifier
+            TokenKind::Identifier(_) => self == &TokenType::Identifier,
+
+            // Literals
+            TokenKind::Integer(_) => self == &TokenType::Integer,
+            TokenKind::Float(_)=> self == &TokenType::Float,
+            TokenKind::Str(_) => self == &TokenType::Str,
+            TokenKind::Null => self == &TokenType::Null,
+        }
     }
 }
 
