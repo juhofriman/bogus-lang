@@ -1,6 +1,6 @@
 use crate::parser::{Parselet, ParseError, parse_expression};
 use crate::lexer::Lexer;
-use crate::astplus::Expression;
+use crate::ast::Expression;
 use std::rc::Rc;
 
 pub struct LeftParensParselet {}

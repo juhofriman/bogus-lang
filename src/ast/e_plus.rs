@@ -1,5 +1,5 @@
-use crate::astplus::{Expression, Value, EvaluationError};
-use crate::astplus::scope::Scope;
+use crate::ast::{Expression, Value, EvaluationError};
+use crate::ast::scope::Scope;
 use std::rc::Rc;
 
 pub struct PlusExpression {
@@ -38,8 +38,8 @@ mod tests {
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::astplus::tests::evaluates_to;
-    use crate::astplus::v_integer::{IntegerExpression, IntegerValue};
+    use crate::ast::tests::evaluates_to;
+    use crate::ast::v_integer::{IntegerExpression, IntegerValue};
 
     #[test]
     fn test_plus_expression() {

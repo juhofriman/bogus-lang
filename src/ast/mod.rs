@@ -1,4 +1,4 @@
-use crate::astplus::scope::Scope;
+use crate::ast::scope::Scope;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 

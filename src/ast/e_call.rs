@@ -1,4 +1,4 @@
-use crate::astplus::{Expression, Scope, Value, EvaluationError};
+use crate::ast::{Expression, Scope, Value, EvaluationError};
 use std::rc::Rc;
 
 pub struct CallExpression {
@@ -33,9 +33,9 @@ impl Expression for CallExpression {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::astplus::tests::{evaluates_to, errors_to, evaluates_to_void};
-    use crate::astplus::v_integer::{IntegerValue, IntegerExpression};
-    use crate::astplus::s_fun::FunStatement;
+    use crate::ast::tests::{evaluates_to, errors_to, evaluates_to_void};
+    use crate::ast::v_integer::{IntegerValue, IntegerExpression};
+    use crate::ast::s_fun::FunStatement;
 
     #[test]
     fn test_call() {

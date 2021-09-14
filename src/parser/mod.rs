@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use crate::lexer::{Lexer};
 use crate::lexer::tokens::{Token, TokenKind};
-use crate::astplus::{Expression};
+use crate::ast::{Expression};
 use crate::parser::p_o_plus::PlusParselet;
 use crate::parser::p_v_identifier::IdentifierParselet;
 use crate::parser::p_v_integer::IntegerParselet;
@@ -119,8 +119,8 @@ pub fn parse_expression(
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::astplus::{TypeMatcher};
-    use crate::astplus::scope::Scope;
+    use crate::ast::{TypeMatcher};
+    use crate::ast::scope::Scope;
 
     #[test]
     fn parse_simple_literals() {

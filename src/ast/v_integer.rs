@@ -1,4 +1,4 @@
-use crate::astplus::{Expression, Scope, Value, EvaluationError, TypeMatcher};
+use crate::ast::{Expression, Scope, Value, EvaluationError, TypeMatcher};
 use std::rc::Rc;
 
 pub struct IntegerExpression {
@@ -91,7 +91,7 @@ impl Value for IntegerValue {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::astplus::tests::evaluates_to;
+    use crate::ast::tests::evaluates_to;
 
     #[test]
     fn test_integer_equals() {

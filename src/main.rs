@@ -1,12 +1,12 @@
 use crate::lexer::{Lexer};
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
-use crate::astplus::scope::Scope;
+use crate::ast::scope::Scope;
 use crate::parser::Parser;
 
 mod lexer;
 mod parser;
-mod astplus;
+mod ast;
 
 enum ReplMode {
     Normal,

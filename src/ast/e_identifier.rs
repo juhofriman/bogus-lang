@@ -1,4 +1,4 @@
-use crate::astplus::{Expression, Scope, Value, EvaluationError};
+use crate::ast::{Expression, Scope, Value, EvaluationError};
 use std::rc::Rc;
 
 pub struct IdentifierExpression {
@@ -34,8 +34,8 @@ impl Expression for IdentifierExpression {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::astplus::tests::{evaluates_to, errors_to};
-    use crate::astplus::v_integer::IntegerValue;
+    use crate::ast::tests::{evaluates_to, errors_to};
+    use crate::ast::v_integer::IntegerValue;
 
     #[test]
     fn test_resolve_not_found() {

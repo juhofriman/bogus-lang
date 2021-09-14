@@ -1,30 +1,30 @@
-use crate::astplus::scope::Scope;
+use crate::ast::scope::Scope;
 use std::rc::Rc;
-use crate::astplus::{Expression, Value, EvaluationError, TypeMatcher};
-use crate::astplus::v_void::Void;
+use crate::ast::{Expression, Value, EvaluationError, TypeMatcher};
+use crate::ast::v_void::Void;
 
-pub struct LetStatement {
+pub struct FunStatement {
     identifier: String,
     expression: Rc<dyn Expression>,
 }
 
-impl LetStatement {
-    pub fn new(identifier: String, expression: Rc<dyn Expression>) -> LetStatement {
-        LetStatement {
+impl FunStatement {
+    pub fn new(identifier: String, expression: Rc<dyn Expression>) -> FunStatement {
+        FunStatement {
             identifier,
             expression,
         }
     }
 }
 
-impl Expression for LetStatement {
+impl Expression for FunStatement {
     fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
-        let value = self.expression.evaluate(scope)?;
-        scope.store(self.identifier.clone(), value);
+        scope.store(self.identifier.clone(),
+                    Rc::new(Function { expression: self.expression.clone() }));
         Ok(Rc::new(Void))
     }
     fn visualize(&self, level: usize) {
-        println!("{} LetStatement", "-".repeat(level));
+        println!("{} FunStatement", "-".repeat(level));
     }
 }
 
