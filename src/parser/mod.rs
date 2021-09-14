@@ -106,7 +106,9 @@ pub fn parse_expression(
     lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
     // Is it possible that nud or led returns None? Or is None always a parsing error?
 
+    // println!("{} {:?}", current_rbp, lexer.current());
     let mut left = get_parselet(lexer.next())?.nud(lexer)?;
+
 
     while rbp_for(lexer.peek()) > current_rbp {
         left = get_parselet(lexer.next())?.led(lexer, left.unwrap())?;
@@ -224,6 +226,17 @@ mod tests {
             TypeMatcher::Void,
             TypeMatcher::Integer(&1),
         ]);
+
+        evaluate_and_assert("fun a(a) -> a", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a(b) -> b; a(1);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        // evaluate_and_assert("fun a(a, b) -> a + b", vec![
+        //     TypeMatcher::Void,
+        // ]);
     }
 
     #[test]

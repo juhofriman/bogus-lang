@@ -56,7 +56,7 @@ pub enum TypeMatcher<'a> {
 impl Display for TypeMatcher<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeMatcher::Integer(v) => write!(f, "Integer({})", v),
+            TypeMatcher::Integer(v) => write!(f, "{}", v),
             TypeMatcher::Null => write!(f, "Null"),
             TypeMatcher::Void => write!(f, "Void"),
             TypeMatcher::Function => write!(f, "Fn"),
@@ -109,7 +109,7 @@ pub trait Value {
             self.type_matcher(),
             other.type_matcher()))
     }
-    fn call(&self, _scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
+    fn call(&self, _scope: &mut Scope, _args: Vec<Rc<dyn Value>>) -> Result<Rc<dyn Value>, EvaluationError> {
         Err( EvaluationError::not_callable(self.type_matcher()))
     }
 }

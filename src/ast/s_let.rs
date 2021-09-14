@@ -1,6 +1,6 @@
 use crate::ast::scope::Scope;
 use std::rc::Rc;
-use crate::ast::{Expression, Value, EvaluationError, TypeMatcher};
+use crate::ast::{Expression, Value, EvaluationError};
 use crate::ast::v_void::Void;
 
 pub struct LetStatement {
@@ -25,18 +25,5 @@ impl Expression for LetStatement {
     }
     fn visualize(&self, level: usize) {
         println!("{} LetStatement", "-".repeat(level));
-    }
-}
-
-struct Function {
-    expression: Rc<dyn Expression>,
-}
-
-impl Value for Function {
-    fn type_matcher(&self) -> TypeMatcher {
-        TypeMatcher::Function
-    }
-    fn call(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
-        self.expression.evaluate(scope)
     }
 }

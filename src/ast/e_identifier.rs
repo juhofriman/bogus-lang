@@ -16,6 +16,9 @@ impl IdentifierExpression {
             value,
         })
     }
+    pub fn name(&self) -> String {
+        self.value.clone()
+    }
 }
 
 impl Expression for IdentifierExpression {

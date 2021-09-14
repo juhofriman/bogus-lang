@@ -2,8 +2,9 @@ use crate::parser::{Parselet, ParseError, parse_expression};
 use crate::lexer::Lexer;
 use crate::ast::Expression;
 use std::rc::Rc;
-use crate::ast::s_let::LetStatement;
 use crate::ast::s_fun::FunStatement;
+use crate::ast::e_identifier::IdentifierExpression;
+use crate::lexer::tokens::TokenKind;
 
 pub struct FunParselet {}
 
@@ -19,9 +20,25 @@ impl Parselet for FunParselet {
                 lexer.next()
                     .ok_or(ParseError { msg: "Expecting = but EOF encountered".to_string() })?
                     .is_left_parens()?;
-                lexer.next()
-                    .ok_or(ParseError { msg: "Expecting = but EOF encountered".to_string() })?
-                    .is_right_parens()?;
+                let mut args: Vec<IdentifierExpression> = vec![];
+                loop {
+                    match &lexer.next() {
+                        Some(token) => {
+                            if token.is_right_parens().is_ok() {
+                                break;
+                            }
+                            match &token.token_kind {
+                                TokenKind::Identifier(name) => {
+                                    args.push(IdentifierExpression::new(name.clone()))
+                                },
+                                TokenKind::Comma => continue,
+                                _ => return Err(ParseError { msg: "Expecting identifier or ,".to_string() })
+                            }
+                        },
+                        None => return Err(ParseError { msg: "Expecting = but EOF encountered".to_string() }),
+                    }
+                }
+
                 lexer.next()
                     .ok_or(ParseError { msg: "Expecting = but EOF encountered".to_string() })?
                     .is_arrow()?;
@@ -30,6 +47,7 @@ impl Parselet for FunParselet {
                     lexer)?;
                 Ok(Some(Rc::new(FunStatement::new(
                     identifier,
+                    args,
                     expr,
                 ))))
             },

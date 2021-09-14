@@ -21,10 +21,15 @@ impl Parselet for LeftParensParselet {
     fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
         match left.get_identifier() {
             Ok(identifier) => {
-                lexer.next()
-                    .ok_or(ParseError { msg: "Expecting ) but EOF encountered".to_string() })?
-                    .is_right_parens()?;
-                Ok(Some(CallExpression::rc(identifier.clone())))
+                let mut args: Vec<Rc<dyn Expression>> = vec![];
+                if lexer.peek().is_some() {
+                    if lexer.peek().unwrap().is_right_parens().is_ok() {
+                    } else {
+                        args.push(parse_expression(0, lexer)?);
+                    }
+                }
+
+                Ok(Some(CallExpression::rc(identifier.clone(), args)))
             },
             Err(_) => Err( ParseError { msg: "Expecting identifier before left parens".to_string() } )
         }
