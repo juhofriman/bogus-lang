@@ -3,28 +3,28 @@ use std::rc::Rc;
 use crate::astplus::{Expression, Value, EvaluationError, TypeMatcher};
 use crate::astplus::v_void::Void;
 
-pub struct FunStatement {
+pub struct LetStatement {
     identifier: String,
     expression: Rc<dyn Expression>,
 }
 
-impl FunStatement {
-    pub fn new(identifier: String, expression: Rc<dyn Expression>) -> FunStatement {
-        FunStatement {
+impl LetStatement {
+    pub fn new(identifier: String, expression: Rc<dyn Expression>) -> LetStatement {
+        LetStatement {
             identifier,
             expression,
         }
     }
 }
 
-impl Expression for FunStatement {
+impl Expression for LetStatement {
     fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
-        scope.store(self.identifier.clone(),
-                    Rc::new(Function { expression: self.expression.clone() }));
+        let value = self.expression.evaluate(scope)?;
+        scope.store(self.identifier.clone(), value);
         Ok(Rc::new(Void))
     }
     fn visualize(&self, level: usize) {
-        println!("{} FunStatement", "-".repeat(level));
+        println!("{} LetStatement", "-".repeat(level));
     }
 }
 

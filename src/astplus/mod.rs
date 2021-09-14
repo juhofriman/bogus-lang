@@ -9,6 +9,9 @@ pub mod e_identifier;
 pub mod s_fun;
 pub mod e_call;
 mod v_void;
+pub mod e_minus;
+pub mod s_let;
+pub mod e_multiplication;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -27,6 +30,9 @@ impl EvaluationError {
     pub fn cant_resolve(name: &str) -> EvaluationError {
         EvaluationError::new(format!("Can't resolve variable `{}`", name))
     }
+    pub fn does_not_support_prefix_minus(me: TypeMatcher) -> EvaluationError {
+        EvaluationError::new(format!("{} does not support prefix minus", me))
+    }
     pub fn operator_not_applicable(
         operator: &str,
         me: TypeMatcher,
@@ -39,7 +45,7 @@ impl EvaluationError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TypeMatcher<'a> {
     Integer(&'a i32),
     Null,
@@ -50,7 +56,7 @@ pub enum TypeMatcher<'a> {
 impl Display for TypeMatcher<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeMatcher::Integer(_) => write!(f, "Integer"),
+            TypeMatcher::Integer(v) => write!(f, "Integer({})", v),
             TypeMatcher::Null => write!(f, "Null"),
             TypeMatcher::Void => write!(f, "Void"),
             TypeMatcher::Function => write!(f, "Fn"),
@@ -58,27 +64,45 @@ impl Display for TypeMatcher<'_> {
     }
 }
 
-impl PartialEq for TypeMatcher<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        match self {
-            TypeMatcher::Integer(self_val) => match other {
-                TypeMatcher::Integer(other_val) => self_val == other_val,
-                _ => false,
-            },
-            _ => panic!("PartialEq not implemented for {:?}", self)
-        }
-    }
-}
+// Hmm, programmatic equality should be in Value trait, this way TypeMatcher can
+// be used for test assertions (Void and such)
+// impl PartialEq for TypeMatcher<'_> {
+//     fn eq(&self, other: &Self) -> bool {
+//         match self {
+//             TypeMatcher::Integer(self_val) => match other {
+//                 TypeMatcher::Integer(other_val) => self_val == other_val,
+//                 _ => false,
+//             },
+//             _ => panic!("PartialEq not implemented for {:?}", self)
+//         }
+//     }
+// }
 
 pub trait Expression {
     fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError>;
+    fn visualize(&self, level: usize);
 }
 
 pub trait Value {
     fn type_matcher(&self) -> TypeMatcher;
+    fn apply_prefix_minus(&self) -> Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::does_not_support_prefix_minus(self.type_matcher()))
+    }
     fn apply_plus(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
         Err( EvaluationError::operator_not_applicable(
             "+",
+            self.type_matcher(),
+            other.type_matcher()))
+    }
+    fn apply_minus(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "-",
+            self.type_matcher(),
+            other.type_matcher()))
+    }
+    fn apply_multiplication(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "*",
             self.type_matcher(),
             other.type_matcher()))
     }

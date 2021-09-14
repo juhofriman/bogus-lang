@@ -22,6 +22,9 @@ impl Expression for IntegerExpression {
     fn evaluate(&self, _: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
         Ok(IntegerValue::rc_from(self))
     }
+    fn visualize(&self, level: usize) {
+        println!("{} Integer({})", "-".repeat(level), self.value);
+    }
 }
 
 pub struct IntegerValue {
@@ -43,10 +46,38 @@ impl Value for IntegerValue {
         TypeMatcher::Integer(&self.value)
     }
 
+    fn apply_prefix_minus(&self) -> Result<Rc<dyn Value>, EvaluationError> {
+        Ok(IntegerValue::rc_value(-self.value))
+    }
+
     fn apply_plus(&self, other: Rc<dyn Value>) -> Result<Rc<dyn Value>, EvaluationError> {
         match other.type_matcher() {
             TypeMatcher::Integer(other_value) =>
                 Ok(IntegerValue::rc_value(self.value + other_value)),
+
+            _ => Err(EvaluationError::operator_not_applicable(
+                "+",
+                self.type_matcher(),
+                other.type_matcher()))
+        }
+    }
+
+    fn apply_minus(&self, other: Rc<dyn Value>) -> Result<Rc<dyn Value>, EvaluationError> {
+        match other.type_matcher() {
+            TypeMatcher::Integer(other_value) =>
+                Ok(IntegerValue::rc_value(self.value - other_value)),
+
+            _ => Err(EvaluationError::operator_not_applicable(
+                "+",
+                self.type_matcher(),
+                other.type_matcher()))
+        }
+    }
+
+    fn apply_multiplication(&self, other: Rc<dyn Value>) -> Result<Rc<dyn Value>, EvaluationError> {
+        match other.type_matcher() {
+            TypeMatcher::Integer(other_value) =>
+                Ok(IntegerValue::rc_value(self.value * other_value)),
 
             _ => Err(EvaluationError::operator_not_applicable(
                 "+",

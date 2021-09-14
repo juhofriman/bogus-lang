@@ -1,11 +1,10 @@
 use crate::lexer::{Lexer};
 use rustyline::Editor;
 use rustyline::error::ReadlineError;
-use crate::ast::scope::Scope;
+use crate::astplus::scope::Scope;
 use crate::parser::Parser;
 
 mod lexer;
-mod ast;
 mod parser;
 mod astplus;
 
@@ -120,10 +119,10 @@ fn eval(input: &str, scope: &mut Scope) {
                     for thing in things {
                         match thing.evaluate(scope) {
                             Ok(res) => {
-                                println!("{}", res);
+                                println!("{}", res.type_matcher());
                             },
                             Err(eval_error) => {
-                                println!("{}", eval_error);
+                                println!("{:?}", eval_error);
                             }
                         }
 

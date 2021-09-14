@@ -1,4 +1,4 @@
-use crate::astplus::{Expression, Scope, Value, EvaluationError, TypeMatcher};
+use crate::astplus::{Expression, Scope, Value, EvaluationError};
 use std::rc::Rc;
 
 pub struct IdentifierExpression {
@@ -24,6 +24,9 @@ impl Expression for IdentifierExpression {
             Some(value) => Ok(value),
             None => Err(EvaluationError::cant_resolve(&self.value))
         }
+    }
+    fn visualize(&self, level: usize) {
+        println!("{} Identifier({})", "-".repeat(level), self.value);
     }
 }
 

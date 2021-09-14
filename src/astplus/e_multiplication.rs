@@ -2,30 +2,30 @@ use crate::astplus::{Expression, Value, EvaluationError};
 use crate::astplus::scope::Scope;
 use std::rc::Rc;
 
-pub struct PlusExpression {
+pub struct MultiplicationExpression {
     left: Rc<dyn Expression>,
     right: Rc<dyn Expression>,
 }
 
-impl PlusExpression {
-    pub fn new(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> PlusExpression {
-        PlusExpression {
+impl MultiplicationExpression {
+    pub fn new(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> MultiplicationExpression {
+        MultiplicationExpression {
             left,
             right,
         }
     }
 }
 
-impl Expression for PlusExpression {
+impl Expression for MultiplicationExpression {
     fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
         let l_value = self.left.evaluate(scope)?;
         let r_value = self.right.evaluate(scope)?;
 
-        l_value.apply_plus(r_value)
+        l_value.apply_multiplication(r_value)
     }
 
     fn visualize(&self, level: usize) {
-        println!("{} PlusExpression", "-".repeat(level));
+        println!("{} MultiplicationExpression", "-".repeat(level));
         println!("{} Left", "-".repeat(level + 1));
         self.left.visualize(level + 2);
         println!("{} Right", "-".repeat(level + 1));
@@ -42,29 +42,29 @@ mod tests {
     use crate::astplus::v_integer::{IntegerExpression, IntegerValue};
 
     #[test]
-    fn test_plus_expression() {
-        let expr = PlusExpression::new(
+    fn test_multiplication_expression() {
+        let expr = MultiplicationExpression::new(
             IntegerExpression::rc(1),
             IntegerExpression::rc(1),
         );
         evaluates_to(
             expr.evaluate(&mut Scope::new()),
-            IntegerValue::rc_value(2)
+            IntegerValue::rc_value(1)
         );
 
-        let expr = PlusExpression::new(
-            Rc::new(PlusExpression::new(
-                IntegerExpression::rc(5),
+        let expr = MultiplicationExpression::new(
+            Rc::new(MultiplicationExpression::new(
+                IntegerExpression::rc(2),
                 IntegerExpression::rc(5),
             )),
-            Rc::new(PlusExpression::new(
-                IntegerExpression::rc(10),
-                IntegerExpression::rc(9),
+            Rc::new(MultiplicationExpression::new(
+                IntegerExpression::rc(2),
+                IntegerExpression::rc(5),
             ))
         );
         evaluates_to(
             expr.evaluate(&mut Scope::new()),
-            IntegerValue::rc_value(29)
+            IntegerValue::rc_value(100)
         );
     }
 

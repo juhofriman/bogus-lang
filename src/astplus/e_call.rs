@@ -1,6 +1,5 @@
-use crate::astplus::{Expression, Scope, Value, EvaluationError, TypeMatcher};
+use crate::astplus::{Expression, Scope, Value, EvaluationError};
 use std::rc::Rc;
-use crate::astplus::e_identifier::IdentifierExpression;
 
 pub struct CallExpression {
     identifier: String,
@@ -24,6 +23,10 @@ impl Expression for CallExpression {
             None => Err(EvaluationError::cant_resolve(&self.identifier))
         }
     }
+
+    fn visualize(&self, level: usize) {
+        println!("{} CallExpression", "-".repeat(level));
+    }
 }
 
 #[cfg(test)]
@@ -32,9 +35,7 @@ mod tests {
     use super::*;
     use crate::astplus::tests::{evaluates_to, errors_to, evaluates_to_void};
     use crate::astplus::v_integer::{IntegerValue, IntegerExpression};
-    use crate::astplus::TypeMatcher::Function;
     use crate::astplus::s_fun::FunStatement;
-    use crate::astplus::v_void::Void;
 
     #[test]
     fn test_call() {
