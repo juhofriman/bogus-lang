@@ -10,6 +10,7 @@ use crate::parser::p_s_let::LetParselet;
 use crate::parser::p_d_semicolon::SemicolonParselet;
 use crate::parser::p_o_multiplication::MultiplicationParselet;
 use crate::parser::p_d_parens::{LeftParensParselet, RightParensParselet};
+use crate::parser::p_s_fun::FunParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -21,6 +22,7 @@ mod p_v_string;
 mod p_s_let;
 mod p_d_semicolon;
 mod p_v_null;
+mod p_s_fun;
 
 pub struct ParseError {
     pub msg: String,
@@ -66,6 +68,7 @@ fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> 
             TokenKind::LeftParens => Ok(Box::new(LeftParensParselet {})),
             TokenKind::RightParens => Ok(Box::new(RightParensParselet {})),
             TokenKind::Let => Ok(Box::new(LetParselet {})),
+            TokenKind::Fun => Ok(Box::new(FunParselet {})),
             TokenKind::Semicolon => Ok(Box::new(SemicolonParselet {})),
             // TokenKind::Null => Ok(Box::new(NullParselet {})),
             _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
@@ -206,6 +209,20 @@ mod tests {
         evaluate_and_assert("let a = 1; let b = 2", vec![
             TypeMatcher::Void,
             TypeMatcher::Void,
+        ]);
+    }
+
+    #[test]
+    fn parse_fun_statement() {
+        evaluate_and_assert("fun a() -> 1", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a() -> 1;", vec![
+            TypeMatcher::Void,
+        ]);
+        evaluate_and_assert("fun a() -> 1; a();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
         ]);
     }
 

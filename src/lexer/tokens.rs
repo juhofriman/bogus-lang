@@ -26,6 +26,33 @@ impl Token {
             })
         }
     }
+
+    pub fn is_left_parens(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::LeftParens => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting LeftParens but {} found", self)
+            })
+        }
+    }
+
+    pub fn is_right_parens(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::RightParens => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting RightParens but {} found", self)
+            })
+        }
+    }
+
+    pub fn is_arrow(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::Arrow => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting -> but {} found", self)
+            })
+        }
+    }
 }
 
 impl Display for Token {

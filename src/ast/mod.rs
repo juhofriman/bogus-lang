@@ -79,6 +79,9 @@ impl Display for TypeMatcher<'_> {
 // }
 
 pub trait Expression {
+    fn get_identifier(&self) -> Result<&String, EvaluationError> {
+        Err( EvaluationError { msg: "Token does not have identifier".to_string() } )
+    }
     fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError>;
     fn visualize(&self, level: usize);
 }

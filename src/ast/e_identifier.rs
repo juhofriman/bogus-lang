@@ -19,6 +19,9 @@ impl IdentifierExpression {
 }
 
 impl Expression for IdentifierExpression {
+    fn get_identifier(&self) -> Result<&String, EvaluationError> {
+        Ok(&self.value)
+    }
     fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
         match scope.resolve(&self.value) {
             Some(value) => Ok(value),
