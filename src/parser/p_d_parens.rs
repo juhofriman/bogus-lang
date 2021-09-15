@@ -3,7 +3,6 @@ use crate::lexer::Lexer;
 use crate::ast::Expression;
 use std::rc::Rc;
 use crate::ast::e_call::CallExpression;
-use crate::lexer::tokens::TokenType;
 
 pub struct LeftParensParselet {}
 
@@ -24,12 +23,12 @@ impl Parselet for LeftParensParselet {
             Ok(identifier) => {
                 let mut args: Vec<Rc<dyn Expression>> = vec![];
                 loop {
-                    if lexer.peek_is(TokenType::RightParens) {
+                    if lexer.peek_or_err()?.is_right_parens().is_ok() {
                         lexer.next();
                         break;
                     }
                     args.push(parse_expression(1, lexer)?);
-                    if lexer.peek_is(TokenType::Comma) {
+                    if lexer.peek_or_err()?.is_comma().is_ok() {
                         lexer.next();
                     }
                 }

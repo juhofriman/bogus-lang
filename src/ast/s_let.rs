@@ -15,6 +15,9 @@ impl LetStatement {
             expression,
         }
     }
+    pub fn rc(identifier: String, expression: Rc<dyn Expression>) -> Rc<LetStatement> {
+        Rc::new(LetStatement::new(identifier, expression))
+    }
 }
 
 impl Expression for LetStatement {

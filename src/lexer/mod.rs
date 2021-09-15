@@ -4,7 +4,6 @@ use tokens::{Token, TokenKind, SourceRef };
 
 use core::fmt;
 use crate::lexer::ShouldContinue::{BailOut, Continue};
-use crate::lexer::tokens::TokenType;
 
 /// Consumable lexer instance, create with create_lexer()
 pub struct Lexer {
@@ -45,25 +44,11 @@ impl Lexer {
         token
     }
 
-    pub fn current(&self) -> Option<&Token> {
-        if self.pointer == 0 {
-            let token = self.tokens.get(self.pointer);
-            return token
-        }
-        let token = self.tokens.get(self.pointer - 1);
-        token
-    }
-
-    pub fn current_is(&self, token_type: TokenType) -> bool {
-        match self.current() {
-            Some(token) => {
-                if token_type.token_is(token) {
-                    return true
-                } else {
-                    return false
-                }
-            },
-            None => false
+    /// Returns next() and wraps None to UnexpectedEOFError
+    pub fn next_or_err(&mut self) -> Result<&Token, UnexpectedEOFError> {
+        match self.next() {
+            Some(token) => Ok(token),
+            None => Err( UnexpectedEOFError {})
         }
     }
 
@@ -72,16 +57,11 @@ impl Lexer {
         self.tokens.get(self.pointer)
     }
 
-    pub fn peek_is(&self, token_type: TokenType) -> bool {
+    /// Returns peek() and wraps None to UnexpectedEOFError
+    pub fn peek_or_err(&mut self) -> Result<&Token, UnexpectedEOFError> {
         match self.peek() {
-            Some(token) => {
-                if token_type.token_is(token) {
-                    return true
-                } else {
-                    return false
-                }
-            },
-            None => false
+            Some(token) => Ok(token),
+            None => Err( UnexpectedEOFError {})
         }
     }
 
@@ -91,7 +71,7 @@ impl Lexer {
     }
 }
 
-// An Error that happens during lexing
+/// An Error that happens during lexing
 pub struct LexingError {
     msg: String,
     location: SourceRef,
@@ -100,6 +80,16 @@ pub struct LexingError {
 impl fmt::Display for LexingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Lexing Error: {} @ {}", self.msg, self.location)
+    }
+}
+
+/// UnexpectedEOFError can be propagated to parser error
+/// Notifies unexpected end of received input
+pub struct UnexpectedEOFError {}
+
+impl fmt::Display for UnexpectedEOFError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Unexpected EOF")
     }
 }
 

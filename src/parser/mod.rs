@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use crate::lexer::{Lexer};
+use crate::lexer::{Lexer, UnexpectedEOFError};
 use crate::lexer::tokens::{Token, TokenKind};
 use crate::ast::{Expression};
 use crate::parser::p_o_plus::PlusParselet;
@@ -36,6 +36,14 @@ impl std::fmt::Display for ParseError {
     }
 }
 
+impl From<UnexpectedEOFError> for ParseError {
+    fn from(err: UnexpectedEOFError) -> Self {
+        ParseError {
+            msg: format!("Lexer: {}", err)
+        }
+    }
+}
+
 pub struct Parser<'a> {
     lexer: &'a mut Lexer,
 }
@@ -58,26 +66,23 @@ impl Parser<'_> {
     }
 }
 
-fn get_parselet(token: Option<&Token>) -> Result<Box<dyn Parselet>, ParseError> {
-    if let Some(token) = token {
-        return match &token.token_kind {
-            TokenKind::Identifier(name) => Ok(Box::new(IdentifierParselet { value: name.clone() })),
-            TokenKind::Integer(value) => Ok(Box::new(IntegerParselet { value: *value })),
-            // TokenKind::Str(value) => Ok(Box::new(StringParselet { value: value.clone() })),
-            TokenKind::Plus => Ok(Box::new(PlusParselet {})),
-            TokenKind::Minus => Ok(Box::new(MinusParselet {})),
-            TokenKind::Multiplication => Ok(Box::new(MultiplicationParselet {})),
-            TokenKind::LeftParens => Ok(Box::new(LeftParensParselet {})),
-            TokenKind::RightParens => Ok(Box::new(RightParensParselet {})),
-            TokenKind::Let => Ok(Box::new(LetParselet {})),
-            TokenKind::Fun => Ok(Box::new(FunParselet {})),
-            TokenKind::Semicolon => Ok(Box::new(SemicolonParselet {})),
-            TokenKind::Comma => Ok(Box::new(CommaParselet {})),
-            // TokenKind::Null => Ok(Box::new(NullParselet {})),
-            _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
-        };
-    }
-    Err(ParseError { msg: "Expecting more input".to_string() })
+fn get_parselet(token: &Token) -> Box<dyn Parselet> {
+    return match &token.token_kind {
+        TokenKind::Identifier(name) => Box::new(IdentifierParselet { value: name.clone() }),
+        TokenKind::Integer(value) => Box::new(IntegerParselet { value: *value }),
+        // TokenKind::Str(value) => Ok(Box::new(StringParselet { value: value.clone() }),
+        TokenKind::Plus => Box::new(PlusParselet {}),
+        TokenKind::Minus => Box::new(MinusParselet {}),
+        TokenKind::Multiplication => Box::new(MultiplicationParselet {}),
+        TokenKind::LeftParens => Box::new(LeftParensParselet {}),
+        TokenKind::RightParens => Box::new(RightParensParselet {}),
+        TokenKind::Let => Box::new(LetParselet {}),
+        TokenKind::Fun => Box::new(FunParselet {}),
+        TokenKind::Semicolon => Box::new(SemicolonParselet {}),
+        TokenKind::Comma => Box::new(CommaParselet {}),
+        // TokenKind::Null => Box::new(NullParselet {}),
+        _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
+    };
 }
 
 fn rbp_for(token: Option<&Token>) -> u32 {
@@ -110,12 +115,11 @@ pub fn parse_expression(
     lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
     // Is it possible that nud or led returns None? Or is None always a parsing error?
 
-    // println!("{} {:?}", current_rbp, lexer.current());
-    let mut left = get_parselet(lexer.next())?.nud(lexer)?;
+    let mut left = get_parselet(lexer.next_or_err()?).nud(lexer)?;
 
 
     while rbp_for(lexer.peek()) > current_rbp {
-        left = get_parselet(lexer.next())?.led(lexer, left.unwrap())?;
+        left = get_parselet(lexer.next_or_err()?).led(lexer, left.unwrap())?;
     }
 
     match left {
@@ -312,12 +316,9 @@ mod tests {
                                     assert_eq!(res.type_matcher(), *expected.get(index).unwrap()),
                                 Err(e) => panic!("Eval error: {:?}", e)
                             }
-
                         }
-
                     }
                 }
-
             }
         }
     }

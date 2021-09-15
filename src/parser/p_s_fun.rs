@@ -14,48 +14,41 @@ impl Parselet for FunParselet {
     }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
-        match lexer.next() {
-            Some(token) => {
-                let identifier = token.is_identifier()?;
-                lexer.next()
-                    .ok_or(ParseError { msg: "Expecting = but EOF encountered".to_string() })?
-                    .is_left_parens()?;
-                let mut args: Vec<IdentifierExpression> = vec![];
-                loop {
-                    match &lexer.next() {
-                        Some(token) => {
-                            if token.is_right_parens().is_ok() {
-                                break;
-                            }
-                            match &token.token_kind {
-                                TokenKind::Identifier(name) => {
-                                    args.push(IdentifierExpression::new(name.clone()))
-                                },
-                                TokenKind::Comma => continue,
-                                _ => return Err(ParseError { msg: "Expecting identifier or ,".to_string() })
-                            }
-                        },
-                        None => return Err(ParseError { msg: "Expecting = but EOF encountered".to_string() }),
-                    }
-                }
+        let identifier = lexer.next_or_err()?.is_identifier()?;
+        lexer.next_or_err()?
+            .is_left_parens()?;
 
-                lexer.next()
-                    .ok_or(ParseError { msg: "Expecting = but EOF encountered".to_string() })?
-                    .is_arrow()?;
-                let expr = parse_expression(
-                    0,
-                    lexer)?;
-                Ok(Some(Rc::new(FunStatement::new(
-                    identifier,
-                    args,
-                    expr,
-                ))))
-            },
-            None => Err( ParseError { msg: "Expecting identifier but EOF encountered".to_string() } )
+        let mut args: Vec<IdentifierExpression> = vec![];
+        loop {
+            let token = lexer.next_or_err()?;
+            if token.is_right_parens().is_ok() {
+                break;
+            }
+
+            match &token.token_kind {
+                TokenKind::Identifier(name) => {
+                    args.push(IdentifierExpression::new(name.clone()))
+                }
+                TokenKind::Comma => continue,
+                _ => return Err(ParseError { msg: "Expecting identifier or ,".to_string() })
+            }
         }
+
+        lexer.next_or_err()?
+            .is_arrow()?;
+
+        let expr = parse_expression(
+            0,
+            lexer)?;
+
+        Ok(Some(FunStatement::rc(
+            identifier,
+            args,
+            expr,
+        )))
     }
 
     fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
-        Err( ParseError { msg: "Can't parse fun in infix position".to_string() } )
+        Err(ParseError { msg: "Can't parse fun in infix position".to_string() })
     }
 }
