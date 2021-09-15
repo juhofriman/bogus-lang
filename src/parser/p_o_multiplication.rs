@@ -17,9 +17,9 @@ impl Parselet for MultiplicationParselet {
             10,
             lexer)?;
 
-        Ok(Rc::new(MultiplicationExpression::new(
+        Ok(MultiplicationExpression::rc(
             left,
             right,
-        )))
+        ))
     }
 }

@@ -14,6 +14,9 @@ impl MultiplicationExpression {
             right,
         }
     }
+    pub fn rc(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> Rc<MultiplicationExpression> {
+        Rc::new(MultiplicationExpression::new(left, right))
+    }
 }
 
 impl Expression for MultiplicationExpression {

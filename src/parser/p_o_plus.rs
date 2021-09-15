@@ -22,9 +22,9 @@ impl Parselet for PlusParselet {
             5,
             lexer)?;
 
-        Ok(Rc::new(PlusExpression::new(
+        Ok(PlusExpression::rc(
             left,
             right,
-        )))
+        ))
     }
 }

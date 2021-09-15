@@ -20,9 +20,9 @@ impl Parselet for MinusParselet {
             5,
             lexer)?;
 
-        Ok(Rc::new(MinusExpression::new(
+        Ok(MinusExpression::rc(
             left,
             right,
-        )))
+        ))
     }
 }

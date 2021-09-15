@@ -11,7 +11,7 @@ pub struct IntegerParselet {
 impl Parselet for IntegerParselet {
 
     fn nud(&self, _lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
-        Ok(Rc::new(IntegerExpression::new(self.value)))
+        Ok(IntegerExpression::rc(self.value))
     }
 
     fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError> {
