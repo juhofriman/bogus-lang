@@ -1,13 +1,10 @@
-// use crate::parser::{Parselet, ParseError, parse_expression};
+// use crate::parser::{Parselet, ParseError};
 // use crate::lexer::Lexer;
 // use crate::ast::{Expression, Value};
 //
 // pub struct NullParselet {}
 //
 // impl Parselet for NullParselet {
-//     fn parse(&self, lexer: &mut Lexer) -> Result<Box<dyn Expression>, ParseError> {
-//         parse_expression(0, lexer)
-//     }
 //
 //     fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Box<dyn Expression>>, ParseError> {
 //         Ok(Some(Box::new(Value::Null)))

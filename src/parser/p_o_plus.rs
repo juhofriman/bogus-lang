@@ -8,9 +8,6 @@ use std::rc::Rc;
 pub struct PlusParselet {}
 
 impl Parselet for PlusParselet {
-    fn parse(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
-        parse_expression(0, lexer)
-    }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
         let expression = parse_expression(

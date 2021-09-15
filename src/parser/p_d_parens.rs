@@ -7,9 +7,6 @@ use crate::ast::e_call::CallExpression;
 pub struct LeftParensParselet {}
 
 impl Parselet for LeftParensParselet {
-    fn parse(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
-        parse_expression(0, lexer)
-    }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
         let expr = parse_expression(
@@ -42,9 +39,6 @@ impl Parselet for LeftParensParselet {
 pub struct RightParensParselet {}
 
 impl Parselet for RightParensParselet {
-    fn parse(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
-        parse_expression(0, lexer)
-    }
 
     fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
         Err(ParseError { msg: "Can't parse ) in prefix position".to_string() })

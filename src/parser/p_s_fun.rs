@@ -9,9 +9,6 @@ use crate::lexer::tokens::TokenKind;
 pub struct FunParselet {}
 
 impl Parselet for FunParselet {
-    fn parse(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
-        parse_expression(0, lexer)
-    }
 
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
         let identifier = lexer.next_or_err()?.is_identifier()?;

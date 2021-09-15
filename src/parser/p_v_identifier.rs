@@ -1,4 +1,4 @@
-use crate::parser::{Parselet, ParseError, parse_expression};
+use crate::parser::{Parselet, ParseError};
 use crate::lexer::Lexer;
 use crate::ast::{Expression};
 use crate::ast::e_identifier::IdentifierExpression;
@@ -9,9 +9,6 @@ pub struct IdentifierParselet {
 }
 
 impl Parselet for IdentifierParselet {
-    fn parse(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
-        parse_expression(0, lexer)
-    }
 
     fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
         Ok(Some(IdentifierExpression::rc(self.value.clone())))

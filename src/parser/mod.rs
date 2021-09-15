@@ -105,7 +105,6 @@ fn rbp_for(token: Option<&Token>) -> u32 {
 }
 
 pub trait Parselet {
-    fn parse(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError>;
     fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError>;
     fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError>;
 }
