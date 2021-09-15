@@ -122,7 +122,7 @@ fn eval(input: &str, scope: &mut Scope) {
                                 println!("{}", res.type_matcher());
                             },
                             Err(eval_error) => {
-                                println!("{:?}", eval_error);
+                                println!("{}", eval_error);
                             }
                         }
 

@@ -11,7 +11,6 @@ pub struct Lexer {
     pointer: usize,
 }
 
-#[allow(dead_code)]
 impl Lexer {
 
     pub fn new(source: &str) -> Result<Lexer, LexingError> {
