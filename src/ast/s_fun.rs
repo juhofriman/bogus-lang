@@ -43,8 +43,8 @@ impl Value for Function {
     fn type_matcher(&self) -> TypeMatcher {
         TypeMatcher::Function
     }
-    fn call(&self, _scope: &mut Scope, args: Vec<Rc<dyn Value>>) -> Result<Rc<dyn Value>, EvaluationError> {
-        let mut new_scope = Scope::new();
+    fn call(&self, scope: &mut Scope, args: Vec<Rc<dyn Value>>) -> Result<Rc<dyn Value>, EvaluationError> {
+        let mut new_scope = Scope::sub(&scope);
         for (i, a) in self.args.iter().enumerate() {
             match args.get(i) {
                 Some(e) => {

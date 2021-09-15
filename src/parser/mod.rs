@@ -98,6 +98,7 @@ fn rbp_for(token: Option<&Token>) -> u32 {
             TokenKind::LeftParens => 50,
             TokenKind::RightParens => 1,
             TokenKind::Let => 0,
+            TokenKind::Fun => 0,
             TokenKind::Semicolon => 1,
             TokenKind::Comma => 0,
             _ => { panic!("rbp (right binding power) is not defined for {:?}", token); }
@@ -286,6 +287,20 @@ mod tests {
         evaluate_and_assert("fun a(a, b) -> a + b; a(5 * 5, 5 + 5);", vec![
             TypeMatcher::Void,
             TypeMatcher::Integer(&35),
+        ]);
+    }
+
+    #[test]
+    fn function_accessing_outer_scope() {
+        evaluate_and_assert("let a = 1; fun b() -> a; b();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("let a = 1; fun b(a) -> a; b(2);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&2),
         ]);
     }
 
