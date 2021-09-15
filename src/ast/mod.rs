@@ -41,9 +41,15 @@ impl EvaluationError {
         he_or_she: TypeMatcher) -> EvaluationError {
         EvaluationError::new(
             format!("Can't apply {} {} {}",
-                    me,
+                    me.type_name(),
                 operator,
-                    he_or_she))
+                    he_or_she.type_name()))
+    }
+}
+
+impl Display for EvaluationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Evaluation Error: {}", self.msg)
     }
 }
 
@@ -56,14 +62,24 @@ pub enum TypeMatcher<'a> {
     Function,
 }
 
+impl TypeMatcher<'_> {
+    fn type_name(&self) -> &str {
+        match self {
+            TypeMatcher::Integer(_) => "Integer",
+            TypeMatcher::String(_) => "String",
+            TypeMatcher::Null => "Null",
+            TypeMatcher::Void => "Void",
+            TypeMatcher::Function => "Fn",
+        }
+    }
+}
+
 impl Display for TypeMatcher<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             TypeMatcher::Integer(v) => write!(f, "{}", v),
             TypeMatcher::String(v) => write!(f, "{}", v),
-            TypeMatcher::Null => write!(f, "Null"),
-            TypeMatcher::Void => write!(f, "Void"),
-            TypeMatcher::Function => write!(f, "Fn"),
+            _ => write!(f, "{}", self.type_name())
         }
     }
 }
