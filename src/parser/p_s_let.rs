@@ -9,7 +9,7 @@ pub struct LetParselet {}
 
 impl Parselet for LetParselet {
 
-    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn nud(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
         let next_token = lexer.next_or_err()?;
         let identifier = next_token.is_identifier()?;
         lexer.next_or_err()?.is_assing()?;
@@ -18,13 +18,13 @@ impl Parselet for LetParselet {
             0,
             lexer)?;
 
-        Ok(Some(LetStatement::rc(
+        Ok(LetStatement::rc(
             identifier,
             expr,
-        )))
+        ))
     }
 
-    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError> {
         Err(ParseError { msg: "Can't parse let in infix position".to_string() })
     }
 }

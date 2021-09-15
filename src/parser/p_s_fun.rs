@@ -10,7 +10,7 @@ pub struct FunParselet {}
 
 impl Parselet for FunParselet {
 
-    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn nud(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
         let identifier = lexer.next_or_err()?.is_identifier()?;
         lexer.next_or_err()?
             .is_left_parens()?;
@@ -38,14 +38,14 @@ impl Parselet for FunParselet {
             0,
             lexer)?;
 
-        Ok(Some(FunStatement::rc(
+        Ok(FunStatement::rc(
             identifier,
             args,
             expr,
-        )))
+        ))
     }
 
-    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError> {
         Err(ParseError { msg: "Can't parse fun in infix position".to_string() })
     }
 }

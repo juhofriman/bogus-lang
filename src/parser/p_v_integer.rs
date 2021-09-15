@@ -10,11 +10,11 @@ pub struct IntegerParselet {
 
 impl Parselet for IntegerParselet {
 
-    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
-        Ok(Some(Rc::new(IntegerExpression::new(self.value))))
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
+        Ok(Rc::new(IntegerExpression::new(self.value)))
     }
 
-    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
-        Ok(None)
+    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError> {
+        Err(ParseError { msg: "Can't parse integer in LED position".to_string() })
     }
 }

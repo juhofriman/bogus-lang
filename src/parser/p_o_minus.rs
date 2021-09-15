@@ -8,21 +8,21 @@ pub struct MinusParselet {}
 
 impl Parselet for MinusParselet {
 
-    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn nud(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
         let expression = parse_expression(
             5,
             lexer)?;
-        Ok(Some(Rc::new(PrefixMinusExpression::new(expression))))
+        Ok(Rc::new(PrefixMinusExpression::new(expression)))
     }
 
-    fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError> {
         let right = parse_expression(
             5,
             lexer)?;
 
-        Ok(Some(Rc::new(MinusExpression::new(
+        Ok(Rc::new(MinusExpression::new(
             left,
             right,
-        ))))
+        )))
     }
 }

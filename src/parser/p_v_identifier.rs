@@ -10,11 +10,11 @@ pub struct IdentifierParselet {
 
 impl Parselet for IdentifierParselet {
 
-    fn nud(&self, _lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
-        Ok(Some(IdentifierExpression::rc(self.value.clone())))
+    fn nud(&self, _lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
+        Ok(IdentifierExpression::rc(self.value.clone()))
     }
 
-    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn led(&self, _lexer: &mut Lexer, _left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError> {
         Err(ParseError { msg: "Can't parse identifier in LED position".to_string() })
     }
 }

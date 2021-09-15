@@ -105,8 +105,8 @@ fn rbp_for(token: Option<&Token>) -> u32 {
 }
 
 pub trait Parselet {
-    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError>;
-    fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError>;
+    fn nud(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError>;
+    fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError>;
 }
 
 pub fn parse_expression(
@@ -118,13 +118,11 @@ pub fn parse_expression(
 
 
     while rbp_for(lexer.peek()) > current_rbp {
-        left = get_parselet(lexer.next_or_err()?).led(lexer, left.unwrap())?;
+        left = get_parselet(lexer.next_or_err()?).led(lexer, left)?;
     }
 
-    match left {
-        Some(expr) => Ok(expr),
-        None => Err(ParseError { msg: "left was None".to_string() })
-    }
+    Ok(left)
+
 }
 
 #[cfg(test)]

@@ -9,22 +9,22 @@ pub struct PlusParselet {}
 
 impl Parselet for PlusParselet {
 
-    fn nud(&self, lexer: &mut Lexer) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn nud(&self, lexer: &mut Lexer) -> Result<Rc<dyn Expression>, ParseError> {
         let expression = parse_expression(
             0,
             lexer)?;
         // This does not create extra expression. Side effect is that +"foo" -> "foo".
-        Ok(Some(expression))
+        Ok(expression)
     }
 
-    fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Option<Rc<dyn Expression>>, ParseError> {
+    fn led(&self, lexer: &mut Lexer, left: Rc<dyn Expression>) -> Result<Rc<dyn Expression>, ParseError> {
         let right = parse_expression(
             5,
             lexer)?;
 
-        Ok(Some(Rc::new(PlusExpression::new(
+        Ok(Rc::new(PlusExpression::new(
             left,
             right,
-        ))))
+        )))
     }
 }
