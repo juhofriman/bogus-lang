@@ -12,6 +12,8 @@ use crate::parser::p_o_multiplication::MultiplicationParselet;
 use crate::parser::p_d_parens::{LeftParensParselet, RightParensParselet};
 use crate::parser::p_s_fun::FunParselet;
 use crate::parser::p_d_comma::CommaParselet;
+use crate::parser::p_v_string::StringParselet;
+use crate::parser::p_v_null::NullParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -70,7 +72,7 @@ fn get_parselet(token: &Token) -> Box<dyn Parselet> {
     return match &token.token_kind {
         TokenKind::Identifier(name) => Box::new(IdentifierParselet { value: name.clone() }),
         TokenKind::Integer(value) => Box::new(IntegerParselet { value: *value }),
-        // TokenKind::Str(value) => Ok(Box::new(StringParselet { value: value.clone() }),
+        TokenKind::Str(value) => Box::new(StringParselet { value: value.clone() }),
         TokenKind::Plus => Box::new(PlusParselet {}),
         TokenKind::Minus => Box::new(MinusParselet {}),
         TokenKind::Multiplication => Box::new(MultiplicationParselet {}),
@@ -80,7 +82,7 @@ fn get_parselet(token: &Token) -> Box<dyn Parselet> {
         TokenKind::Fun => Box::new(FunParselet {}),
         TokenKind::Semicolon => Box::new(SemicolonParselet {}),
         TokenKind::Comma => Box::new(CommaParselet {}),
-        // TokenKind::Null => Box::new(NullParselet {}),
+        TokenKind::Null => Box::new(NullParselet {}),
         _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
     };
 }
@@ -149,9 +151,12 @@ mod tests {
         evaluate_and_assert("-1", vec![
             TypeMatcher::Integer(&-1),
         ]);
-        // parses_to("\"Hello world!\"".to_string(), vec![
-        //     Box::new(Value::String("Hello world!".to_string())),
-        // ]);
+        evaluate_and_assert("\"Hello world!\"", vec![
+            TypeMatcher::String("Hello world!"),
+        ]);
+        evaluate_and_assert("null", vec![
+            TypeMatcher::Null,
+        ]);
     }
 
     #[test]

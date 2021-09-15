@@ -12,6 +12,8 @@ mod v_void;
 pub mod e_minus;
 pub mod s_let;
 pub mod e_multiplication;
+pub mod v_string;
+pub mod v_null;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -48,6 +50,7 @@ impl EvaluationError {
 #[derive(Debug, PartialEq)]
 pub enum TypeMatcher<'a> {
     Integer(&'a i32),
+    String(&'a str),
     Null,
     Void,
     Function,
@@ -57,6 +60,7 @@ impl Display for TypeMatcher<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             TypeMatcher::Integer(v) => write!(f, "{}", v),
+            TypeMatcher::String(v) => write!(f, "{}", v),
             TypeMatcher::Null => write!(f, "Null"),
             TypeMatcher::Void => write!(f, "Void"),
             TypeMatcher::Function => write!(f, "Fn"),
