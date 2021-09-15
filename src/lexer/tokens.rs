@@ -9,6 +9,16 @@ pub struct Token {
 
 impl Token {
 
+    pub fn new(token_kind: TokenKind, line: u32, column: u32) -> Token {
+        Token {
+            token_kind,
+            source_ref: SourceRef {
+                line,
+                column,
+            },
+        }
+    }
+
     pub fn is_identifier(&self) -> Result<String, ParseError> {
         match &self.token_kind {
             TokenKind::Identifier(name) => Ok(name.to_string()),
@@ -22,7 +32,7 @@ impl Token {
         match &self.token_kind {
             TokenKind::Assign => Ok(()),
             _ => Err( ParseError {
-                msg: format!("Expecting Identifier but {} found", self)
+                msg: format!("Expecting = but {} found", self)
             })
         }
     }
@@ -31,7 +41,7 @@ impl Token {
         match &self.token_kind {
             TokenKind::LeftParens => Ok(()),
             _ => Err( ParseError {
-                msg: format!("Expecting LeftParens but {} found", self)
+                msg: format!("Expecting ( but {} found", self)
             })
         }
     }
@@ -40,7 +50,7 @@ impl Token {
         match &self.token_kind {
             TokenKind::RightParens => Ok(()),
             _ => Err( ParseError {
-                msg: format!("Expecting RightParens but {} found", self)
+                msg: format!("Expecting ) but {} found", self)
             })
         }
     }
@@ -53,22 +63,20 @@ impl Token {
             })
         }
     }
+
+    pub fn is_comma(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::Comma => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting , but {} found", self)
+            })
+        }
+    }
 }
 
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?} {}", self.token_kind, self.source_ref)
-    }
-}
-
-/// Creates a token with given kind and source references
-pub fn create_token(token_kind: TokenKind, line: u32, column: u32) -> Token {
-    Token {
-        token_kind,
-        source_ref: SourceRef {
-            line,
-            column,
-        },
     }
 }
 
@@ -81,75 +89,6 @@ pub struct SourceRef {
 impl Display for SourceRef {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}:{}]", self.line, self.column)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum TokenType {
-    // Reserved words
-    Let,
-    Const,
-    Fun,
-
-    // Operators
-    Assign,
-    Equals,
-    Minus,
-    Plus,
-    Multiplication,
-    Division,
-    Arrow,
-
-    // Delimiters
-    Comma,
-    Dot,
-    Semicolon,
-    LeftParens,
-    RightParens,
-
-    // Identifier
-    Identifier,
-
-    // Literals
-    Integer,
-    Float,
-    Str,
-    Null,
-}
-
-impl TokenType {
-    pub fn token_is(&self, token: &Token) -> bool {
-        match &token.token_kind {
-            // Reserved words
-            TokenKind::Let => self == &TokenType::Let,
-            TokenKind::Const => self == &TokenType::Const,
-            TokenKind::Fun => self == &TokenType::Fun,
-
-            // Operators
-            TokenKind::Assign => self == &TokenType::Assign,
-            TokenKind::Equals => self == &TokenType::Equals,
-            TokenKind::Minus => self == &TokenType::Minus,
-            TokenKind::Plus => self == &TokenType::Plus,
-            TokenKind::Multiplication => self == &TokenType::Multiplication,
-            TokenKind::Division => self == &TokenType::Division,
-            TokenKind::Arrow => self == &TokenType::Arrow,
-
-            // Delimiters
-            TokenKind::Comma => self == &TokenType::Comma,
-            TokenKind::Dot => self == &TokenType::Dot,
-            TokenKind::Semicolon => self == &TokenType::Semicolon,
-            TokenKind::LeftParens => self == &TokenType::LeftParens,
-            TokenKind::RightParens => self == &TokenType::RightParens,
-
-            // Identifier
-            TokenKind::Identifier(_) => self == &TokenType::Identifier,
-
-            // Literals
-            TokenKind::Integer(_) => self == &TokenType::Integer,
-            TokenKind::Float(_)=> self == &TokenType::Float,
-            TokenKind::Str(_) => self == &TokenType::Str,
-            TokenKind::Null => self == &TokenType::Null,
-        }
     }
 }
 
@@ -193,10 +132,10 @@ mod tests {
 
     #[test]
     fn token_usage() {
-        let tokens = vec![
-            create_token(TokenKind::Let, 0, 0),
-            create_token(TokenKind::Identifier("seppo".to_string()), 0, 3),
-        ];
-        assert_eq!(tokens.len(), 2)
+        assert!(Token::new(TokenKind::Let, 0, 0).is_identifier().is_err());
+        assert!(Token::new(
+            TokenKind::Identifier("foo".to_string()), 0, 0)
+            .is_identifier().is_ok()
+        );
     }
 }

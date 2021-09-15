@@ -1,11 +1,9 @@
 pub mod tokens;
 
-use tokens::{Token, TokenKind, create_token, SourceRef };
+use tokens::{Token, TokenKind, SourceRef };
 
 use core::fmt;
 use crate::lexer::ShouldContinue::{BailOut, Continue};
-use crate::parser::ParseError;
-use crate::lexer::tokens::TokenType;
 
 /// Consumable lexer instance, create with create_lexer()
 pub struct Lexer {
@@ -46,25 +44,11 @@ impl Lexer {
         token
     }
 
-    pub fn current(&self) -> Option<&Token> {
-        if self.pointer == 0 {
-            let token = self.tokens.get(self.pointer);
-            return token
-        }
-        let token = self.tokens.get(self.pointer - 1);
-        token
-    }
-
-    pub fn current_is(&self, token_type: TokenType) -> bool {
-        match self.current() {
-            Some(token) => {
-                if token_type.token_is(token) {
-                    return true
-                } else {
-                    return false
-                }
-            },
-            None => false
+    /// Returns next() and wraps None to UnexpectedEOFError
+    pub fn next_or_err(&mut self) -> Result<&Token, UnexpectedEOFError> {
+        match self.next() {
+            Some(token) => Ok(token),
+            None => Err( UnexpectedEOFError {})
         }
     }
 
@@ -73,16 +57,11 @@ impl Lexer {
         self.tokens.get(self.pointer)
     }
 
-    pub fn peek_is(&self, token_type: TokenType) -> bool {
+    /// Returns peek() and wraps None to UnexpectedEOFError
+    pub fn peek_or_err(&mut self) -> Result<&Token, UnexpectedEOFError> {
         match self.peek() {
-            Some(token) => {
-                if token_type.token_is(token) {
-                    return true
-                } else {
-                    return false
-                }
-            },
-            None => false
+            Some(token) => Ok(token),
+            None => Err( UnexpectedEOFError {})
         }
     }
 
@@ -92,7 +71,7 @@ impl Lexer {
     }
 }
 
-// An Error that happens during lexing
+/// An Error that happens during lexing
 pub struct LexingError {
     msg: String,
     location: SourceRef,
@@ -101,6 +80,16 @@ pub struct LexingError {
 impl fmt::Display for LexingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Lexing Error: {} @ {}", self.msg, self.location)
+    }
+}
+
+/// UnexpectedEOFError can be propagated to parser error
+/// Notifies unexpected end of received input
+pub struct UnexpectedEOFError {}
+
+impl fmt::Display for UnexpectedEOFError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Unexpected EOF")
     }
 }
 
@@ -383,7 +372,7 @@ impl LexBuffer {
         self.buffer.clear();
 
         // Create token with token_column_marker (the column that started token)
-        let new_token = create_token(kind,
+        let new_token = Token::new(kind,
                                      self.current_line,
                                      self.token_column_marker);
 
@@ -873,13 +862,13 @@ mod tests {
     /// Creates a token that can be used as a reference in tests
     /// It adds offset to 0, which means that expected column is the one given
     fn token_at(kind: TokenKind, line: u32, column: u32) -> Token {
-        create_token(kind, line, column)
+        Token::new(kind, line, column)
     }
 
     /// Creates dummy token, with source references zeroed
     /// Cannot be used for assertions with line and column references but
     /// is much more fast to write
     fn dummy_token(kind: TokenKind) -> Token {
-        create_token(kind, 0, 0)
+        Token::new(kind, 0, 0)
     }
 }

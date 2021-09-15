@@ -37,6 +37,9 @@ impl MinusExpression {
             right,
         }
     }
+    pub fn rc(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> Rc<MinusExpression> {
+        Rc::new(MinusExpression::new(left, right))
+    }
 }
 
 impl Expression for MinusExpression {

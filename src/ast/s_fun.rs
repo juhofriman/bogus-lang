@@ -18,6 +18,9 @@ impl FunStatement {
             expression,
         }
     }
+    pub fn rc(identifier: String, args: Vec<IdentifierExpression>, expression: Rc<dyn Expression>) -> Rc<FunStatement> {
+        Rc::new(FunStatement::new(identifier, args, expression))
+    }
 }
 
 impl Expression for FunStatement {
