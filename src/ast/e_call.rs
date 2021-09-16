@@ -43,42 +43,49 @@ mod tests {
     use crate::ast::tests::{evaluates_to, errors_to, evaluates_to_void};
     use crate::ast::v_integer::{IntegerValue, IntegerExpression};
     use crate::ast::s_fun::FunStatement;
+    use crate::ast::e_identifier::IdentifierExpression;
 
-    // #[test]
-    // fn test_call() {
-    //     let mut scope = Scope::new();
-    //     evaluates_to_void(
-    //         FunStatement::new(
-    //             "foo".to_string(),
-    //             vec![],
-    //             IntegerExpression::rc(123))
-    //             .evaluate(&mut scope)
-    //     );
-    //     errors_to(
-    //         CallExpression::new("bar".to_string(), vec![]).evaluate(&mut scope),
-    //         "Can't resolve variable `bar`",
-    //     )
-    // }
-    //
-    // #[test]
-    // fn test_resolve_found() {
-    //     let mut scope = Scope::new();
-    //
-    //     evaluates_to_void(
-    //         FunStatement::new(
-    //             "foo".to_string(),
-    //             vec![],
-    //             IntegerExpression::rc(123))
-    //             .evaluate(&mut scope)
-    //     );
-    //
-    //     evaluates_to(
-    //         CallExpression::new("foo".to_string(), vec![]).evaluate(&mut scope),
-    //         IntegerValue::rc_value(123),
-    //     );
-    //     evaluates_to(
-    //         CallExpression::new("foo".to_string(), vec![]).evaluate(&mut scope),
-    //         IntegerValue::rc_value(123),
-    //     );
-    // }
+    #[test]
+    fn test_call() {
+        let mut scope = Scope::new();
+        evaluates_to_void(
+            FunStatement::new(
+                "foo".to_string(),
+                vec![],
+                IntegerExpression::rc(123))
+                .evaluate(&mut scope)
+        );
+        errors_to(
+            CallExpression::new(
+                IdentifierExpression::rc("bar".to_string()),
+                vec![]).evaluate(&mut scope),
+            "Can't resolve variable `bar`",
+        )
+    }
+
+    #[test]
+    fn test_resolve_found() {
+        let mut scope = Scope::new();
+
+        evaluates_to_void(
+            FunStatement::new(
+                "foo".to_string(),
+                vec![],
+                IntegerExpression::rc(123))
+                .evaluate(&mut scope)
+        );
+
+        evaluates_to(
+            CallExpression::new(
+                IdentifierExpression::rc("foo".to_string()),
+                vec![]).evaluate(&mut scope),
+            IntegerValue::rc_value(123),
+        );
+        evaluates_to(
+            CallExpression::new(
+                IdentifierExpression::rc("foo".to_string()),
+                vec![]).evaluate(&mut scope),
+            IntegerValue::rc_value(123),
+        );
+    }
 }
