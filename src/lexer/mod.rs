@@ -223,6 +223,8 @@ impl LexBuffer {
                         is_delimiting_opt(peek))),
                     "(" => Ok(Some(self.pop_buffer(TokenKind::LeftParens))),
                     ")" => Ok(Some(self.pop_buffer(TokenKind::RightParens))),
+                    "{" => Ok(Some(self.pop_buffer(TokenKind::LeftBrace))),
+                    "}" => Ok(Some(self.pop_buffer(TokenKind::RightBrace))),
                     "," => Ok(Some(self.pop_buffer(TokenKind::Comma))),
                     "." => Ok(Some(self.pop_buffer(TokenKind::Dot))),
                     "-" => Ok(self.pop_buffer_cond(
@@ -407,6 +409,8 @@ fn is_delimiting(c: &char) -> bool {
         ';' => true,
         '(' => true,
         ')' => true,
+        '{' => true,
+        '}' => true,
         '+' => true,
         '-' => true,
         '*' => true,
@@ -442,7 +446,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null, LeftBrace, RightBrace};
 
     // Internal implementation test helpers
 
@@ -532,6 +536,8 @@ mod tests {
         token_lexes_to(";", Semicolon);
         token_lexes_to("(", LeftParens);
         token_lexes_to(")", RightParens);
+        token_lexes_to("{", LeftBrace);
+        token_lexes_to("}", RightBrace);
         token_lexes_to("->", Arrow);
         token_lexes_to("-", Minus);
         token_lexes_to("+", Plus);
@@ -654,6 +660,21 @@ mod tests {
             dummy_token(Null),
             dummy_token(Plus),
             dummy_token(Null),
+        ]);
+        with_input_lexes_to("{}", vec![
+            dummy_token(LeftBrace),
+            dummy_token(RightBrace),
+        ]);
+        with_input_lexes_to("{ 1 }", vec![
+            dummy_token(LeftBrace),
+            dummy_token(Integer(1)),
+            dummy_token(RightBrace),
+        ]);
+        with_input_lexes_to("foo{ 1 }", vec![
+            dummy_token(Identifier("foo".to_string())),
+            dummy_token(LeftBrace),
+            dummy_token(Integer(1)),
+            dummy_token(RightBrace),
         ]);
     }
 

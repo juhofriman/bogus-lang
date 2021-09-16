@@ -114,6 +114,8 @@ pub enum TokenKind {
     Semicolon,
     LeftParens,
     RightParens,
+    LeftBrace,
+    RightBrace,
 
     // Identifier
     Identifier(String),
