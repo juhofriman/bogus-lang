@@ -305,6 +305,39 @@ mod tests {
     }
 
     #[test]
+    fn anonymous_function() {
+        evaluate_and_assert("let a = fun (a) -> a + 1; a(1)", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&2),
+        ]);
+        evaluate_and_assert("fun a(b) -> b(); a(fun () -> 1)", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("fun a() -> fun () -> 1; let b = a(); b();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("fun a() -> fun () -> 1; a()();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("fun a() -> fun (a) -> a; a()(5);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&5),
+        ]);
+        evaluate_and_assert("fun a(a) -> a(); a(fun () -> 1);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("fun a(a) -> a(5); a(fun (b) -> b);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&5),
+        ]);
+    }
+
+    #[test]
     fn parse_weird_things() {
         evaluate_and_assert("1 + 2; 2+3;", vec![
             TypeMatcher::Integer(&3),
@@ -330,7 +363,8 @@ mod tests {
                         for (index, received_expression) in things.iter().enumerate() {
                             match received_expression.evaluate(&mut scope) {
                                 Ok(res) =>
-                                    assert_eq!(res.type_matcher(), *expected.get(index).unwrap()),
+                                    assert_eq!(res.type_matcher(), *expected.get(index).unwrap(),
+                                               "Right from input: {}", input),
                                 Err(e) => panic!("Eval error: {:?}", e)
                             }
                         }

@@ -43,6 +43,11 @@ impl Lexer {
         token
     }
 
+    pub fn current(&mut self) -> &Token {
+        let token = self.tokens.get(self.pointer-1);
+        token.unwrap()
+    }
+
     /// Returns next() and wraps None to UnexpectedEOFError
     pub fn next_or_err(&mut self) -> Result<&Token, UnexpectedEOFError> {
         match self.next() {
