@@ -218,6 +218,9 @@ impl LexBuffer {
                     "fun" => Ok(self.pop_buffer_cond(
                         TokenKind::Fun,
                         is_delimiting_opt(peek))),
+                    "return" => Ok(self.pop_buffer_cond(
+                        TokenKind::Return,
+                        is_delimiting_opt(peek))),
                     "null" => Ok(self.pop_buffer_cond(
                         TokenKind::Null,
                         is_delimiting_opt(peek))),
@@ -446,7 +449,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null, LeftBrace, RightBrace};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null, LeftBrace, RightBrace, Return};
 
     // Internal implementation test helpers
 
@@ -523,6 +526,7 @@ mod tests {
         token_lexes_to("let", Let);
         token_lexes_to("const", Const);
         token_lexes_to("fun", Fun);
+        token_lexes_to("return", Return);
         token_lexes_to("=", Assign);
         token_lexes_to("==", Equals);
         token_lexes_to("foo", Identifier("foo".to_string()));

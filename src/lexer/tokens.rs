@@ -55,6 +55,24 @@ impl Token {
         }
     }
 
+    pub fn is_right_brace(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::RightBrace => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting ) but {} found", self)
+            })
+        }
+    }
+
+    pub fn is_semicolon(&self) -> Result<(), ParseError> {
+        match &self.token_kind {
+            TokenKind::Semicolon => Ok(()),
+            _ => Err( ParseError {
+                msg: format!("Expecting -> but {} found", self)
+            })
+        }
+    }
+
     pub fn is_arrow(&self) -> Result<(), ParseError> {
         match &self.token_kind {
             TokenKind::Arrow => Ok(()),
@@ -98,6 +116,7 @@ pub enum TokenKind {
     Let,
     Const,
     Fun,
+    Return,
 
     // Operators
     Assign,

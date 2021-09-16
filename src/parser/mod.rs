@@ -14,6 +14,8 @@ use crate::parser::p_s_fun::FunParselet;
 use crate::parser::p_d_comma::CommaParselet;
 use crate::parser::p_v_string::StringParselet;
 use crate::parser::p_v_null::NullParselet;
+use crate::parser::p_d_brace::{LeftBraceParselet, RightBraceParselet};
+use crate::parser::p_s_return::ReturnParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -27,6 +29,8 @@ mod p_d_semicolon;
 mod p_v_null;
 mod p_s_fun;
 mod p_d_comma;
+mod p_d_brace;
+mod p_s_return;
 
 pub struct ParseError {
     pub msg: String,
@@ -78,8 +82,11 @@ fn get_parselet(token: &Token) -> Box<dyn Parselet> {
         TokenKind::Multiplication => Box::new(MultiplicationParselet {}),
         TokenKind::LeftParens => Box::new(LeftParensParselet {}),
         TokenKind::RightParens => Box::new(RightParensParselet {}),
+        TokenKind::LeftBrace => Box::new(LeftBraceParselet {}),
+        TokenKind::RightBrace => Box::new(RightBraceParselet {}),
         TokenKind::Let => Box::new(LetParselet {}),
         TokenKind::Fun => Box::new(FunParselet {}),
+        TokenKind::Return => Box::new(ReturnParselet {}),
         TokenKind::Semicolon => Box::new(SemicolonParselet {}),
         TokenKind::Comma => Box::new(CommaParselet {}),
         TokenKind::Null => Box::new(NullParselet {}),
@@ -97,8 +104,11 @@ fn rbp_for(token: Option<&Token>) -> u32 {
             TokenKind::Multiplication => 10,
             TokenKind::LeftParens => 50,
             TokenKind::RightParens => 1,
+            TokenKind::LeftBrace => 0,
+            TokenKind::RightBrace => 1,
             TokenKind::Let => 0,
             TokenKind::Fun => 0,
+            TokenKind::Return => 0,
             TokenKind::Semicolon => 1,
             TokenKind::Comma => 0,
             _ => { panic!("rbp (right binding power) is not defined for {:?}", token); }
@@ -119,13 +129,11 @@ pub fn parse_expression(
 
     let mut left = get_parselet(lexer.next_or_err()?).nud(lexer)?;
 
-
     while rbp_for(lexer.peek()) > current_rbp {
         left = get_parselet(lexer.next_or_err()?).led(lexer, left)?;
     }
 
     Ok(left)
-
 }
 
 #[cfg(test)]
@@ -335,6 +343,15 @@ mod tests {
             TypeMatcher::Void,
             TypeMatcher::Integer(&5),
         ]);
+        evaluate_and_assert("fun a() -> { let b = 1; let c = 2 return b + c; } a();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&3)
+        ]);
+        // Early return test
+        evaluate_and_assert("fun a() -> { return 1; let b = 1; let c = 2 return b + c; } a();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1)
+        ]);
     }
 
     #[test]
@@ -365,7 +382,7 @@ mod tests {
                                 Ok(res) =>
                                     assert_eq!(res.type_matcher(), *expected.get(index).unwrap(),
                                                "Right from input: {}", input),
-                                Err(e) => panic!("Eval error: {:?}", e)
+                                Err(e) => panic!("Eval error: {:?} input: {}", e, input)
                             }
                         }
                     }

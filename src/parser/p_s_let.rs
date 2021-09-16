@@ -15,7 +15,7 @@ impl Parselet for LetParselet {
         lexer.next_or_err()?.is_assing()?;
 
         let expr = parse_expression(
-            0,
+            1,
             lexer)?;
 
         Ok(LetStatement::rc(

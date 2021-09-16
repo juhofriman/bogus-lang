@@ -14,6 +14,8 @@ pub mod s_let;
 pub mod e_multiplication;
 pub mod v_string;
 pub mod v_null;
+pub mod s_grouped;
+pub mod s_return;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -105,12 +107,14 @@ pub trait Expression {
     fn get_identifier(&self) -> Result<&String, EvaluationError> {
         Err( EvaluationError { msg: "Token does not have identifier".to_string() } )
     }
+    fn is_return(&self) -> bool { false }
     fn evaluate(&self, scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError>;
     fn visualize(&self, level: usize);
 }
 
 pub trait Value {
     fn type_matcher(&self) -> TypeMatcher;
+    fn is_return_value(&self) -> bool { false }
     fn apply_prefix_minus(&self) -> Result<Rc<dyn Value>, EvaluationError> {
         Err( EvaluationError::does_not_support_prefix_minus(self.type_matcher()))
     }
