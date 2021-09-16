@@ -305,6 +305,23 @@ mod tests {
     }
 
     #[test]
+    fn anonymous_function() {
+        evaluate_and_assert("let a = fun (a) -> a + 1; a(1)", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&2),
+        ]);
+        evaluate_and_assert("fun a(b) -> b(); a(fun () -> 1)", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("fun a() -> fun () -> 1; let b = a(); b();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+    }
+
+    #[test]
     fn parse_weird_things() {
         evaluate_and_assert("1 + 2; 2+3;", vec![
             TypeMatcher::Integer(&3),

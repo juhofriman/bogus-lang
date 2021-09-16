@@ -30,7 +30,32 @@ impl Expression for FunStatement {
         Ok(Rc::new(Void))
     }
     fn visualize(&self, level: usize) {
-        println!("{} FunStatement", "-".repeat(level));
+        println!("{} FunStatement {}({} args)", "-".repeat(level), self.identifier, self.args.len());
+        self.expression.visualize(level + 1);
+    }
+}
+
+pub struct AnonFunction {
+    expression: Rc<dyn Expression>,
+    args: Rc<Vec<IdentifierExpression>>,
+}
+
+impl AnonFunction {
+    pub fn rc(args: Vec<IdentifierExpression>, expression: Rc<dyn Expression>) -> Rc<AnonFunction> {
+        Rc::new( AnonFunction {
+            expression,
+            args: Rc::new(args),
+        })
+    }
+}
+
+impl Expression for AnonFunction {
+    fn evaluate(&self, _scope: &mut Scope) -> Result<Rc<dyn Value>, EvaluationError> {
+        Ok(Rc::new(Function { expression: self.expression.clone(), args: self.args.clone() }))
+    }
+    fn visualize(&self, level: usize) {
+        println!("{} AnonFunction _({} args)", "-".repeat(level), self.args.len());
+        self.expression.visualize(level + 1);
     }
 }
 
