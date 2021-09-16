@@ -3,19 +3,21 @@ use crate::ast::scope::Scope;
 use std::rc::Rc;
 
 pub struct EqualsExpression {
+    ne: bool,
     left: Rc<dyn Expression>,
     right: Rc<dyn Expression>,
 }
 
 impl EqualsExpression {
-    pub fn new(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> EqualsExpression {
+    pub fn new(ne: bool, left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> EqualsExpression {
         EqualsExpression {
+            ne,
             left,
             right,
         }
     }
-    pub fn rc(left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> Rc<EqualsExpression> {
-        Rc::new(EqualsExpression::new(left, right))
+    pub fn rc(ne: bool, left: Rc<dyn Expression>, right: Rc<dyn Expression>) -> Rc<EqualsExpression> {
+        Rc::new(EqualsExpression::new(ne, left, right))
     }
 }
 
@@ -24,7 +26,11 @@ impl Expression for EqualsExpression {
         let l_value = self.left.evaluate(scope)?;
         let r_value = self.right.evaluate(scope)?;
 
-        l_value.apply_equals(r_value)
+        if self.ne {
+            l_value.apply_not_equals(r_value)
+        } else {
+            l_value.apply_equals(r_value)
+        }
     }
 
     fn visualize(&self, level: usize) {

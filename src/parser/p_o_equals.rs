@@ -26,10 +26,12 @@ impl Parselet for EqualsParselet {
 
         match self.equality_type {
             EqualsOrNequals::Equals => Ok(EqualsExpression::rc(
+                false,
                 left,
                 right,
             )),
             EqualsOrNequals::Nequals => Ok(EqualsExpression::rc(
+                true,
                 left,
                 right,
             ))

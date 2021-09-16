@@ -19,6 +19,7 @@ pub mod s_return;
 pub mod s_assign;
 pub mod v_boolean;
 pub mod e_equals;
+pub mod s_if;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -124,9 +125,16 @@ pub trait Expression {
 pub trait Value {
     fn type_matcher(&self) -> TypeMatcher;
     fn is_return_value(&self) -> bool { false }
+    fn is_truthy(&self) -> bool { true } // true, because most of the values are truthy!!
     fn apply_equals(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
         Err( EvaluationError::operator_not_applicable(
-            "eq/neq",
+            "==",
+            self.type_matcher(),
+            other.type_matcher()))
+    }
+    fn apply_not_equals(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "!=",
             self.type_matcher(),
             other.type_matcher()))
     }

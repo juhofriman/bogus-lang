@@ -59,6 +59,19 @@ impl Value for IntegerValue {
         }
     }
 
+    fn apply_not_equals(&self, other: Rc<dyn Value>) -> Result<Rc<dyn Value>, EvaluationError> {
+        // ok, this is a bit bummer...
+        match other.type_matcher() {
+            TypeMatcher::Integer(other_value) =>
+                Ok(BooleanValue::rc(&self.value != other_value)),
+
+            _ => Err(EvaluationError::operator_not_applicable(
+                "eq/neq",
+                self.type_matcher(),
+                other.type_matcher()))
+        }
+    }
+
     fn apply_prefix_minus(&self) -> Result<Rc<dyn Value>, EvaluationError> {
         Ok(IntegerValue::rc_value(-self.value))
     }

@@ -35,4 +35,7 @@ impl Value for BooleanValue {
     fn type_matcher(&self) -> TypeMatcher {
         TypeMatcher::Boolean(&self.value)
     }
+    fn is_truthy(&self) -> bool {
+        self.value == true
+    }
 }
