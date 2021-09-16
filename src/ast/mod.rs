@@ -17,6 +17,7 @@ pub mod v_null;
 pub mod s_grouped;
 pub mod s_return;
 pub mod s_assign;
+pub mod v_boolean;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -66,6 +67,7 @@ impl Display for EvaluationError {
 pub enum TypeMatcher<'a> {
     Integer(&'a i32),
     String(&'a str),
+    Boolean(&'a bool),
     Null,
     Void,
     Function,
@@ -76,6 +78,7 @@ impl TypeMatcher<'_> {
         match self {
             TypeMatcher::Integer(_) => "Integer",
             TypeMatcher::String(_) => "String",
+            TypeMatcher::Boolean(_) => "Boolean",
             TypeMatcher::Null => "Null",
             TypeMatcher::Void => "Void",
             TypeMatcher::Function => "Fn",
@@ -88,6 +91,7 @@ impl Display for TypeMatcher<'_> {
         match self {
             TypeMatcher::Integer(v) => write!(f, "{}", v),
             TypeMatcher::String(v) => write!(f, "{}", v),
+            TypeMatcher::Boolean(v) => write!(f, "{}", v),
             _ => write!(f, "{}", self.type_name())
         }
     }

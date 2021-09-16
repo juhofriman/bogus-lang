@@ -17,6 +17,7 @@ use crate::parser::p_v_null::NullParselet;
 use crate::parser::p_d_brace::{LeftBraceParselet, RightBraceParselet};
 use crate::parser::p_s_return::ReturnParselet;
 use crate::parser::p_s_assign::AssignParselet;
+use crate::parser::p_v_boolean::BooleanParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -33,6 +34,7 @@ mod p_d_comma;
 mod p_d_brace;
 mod p_s_return;
 mod p_s_assign;
+mod p_v_boolean;
 
 pub struct ParseError {
     pub msg: String,
@@ -79,6 +81,8 @@ fn get_parselet(token: &Token) -> Box<dyn Parselet> {
         TokenKind::Identifier(name) => Box::new(IdentifierParselet { value: name.clone() }),
         TokenKind::Integer(value) => Box::new(IntegerParselet { value: *value }),
         TokenKind::Str(value) => Box::new(StringParselet { value: value.clone() }),
+        TokenKind::True => Box::new(BooleanParselet { value: true }),
+        TokenKind::False => Box::new(BooleanParselet { value: false }),
         TokenKind::Plus => Box::new(PlusParselet {}),
         TokenKind::Minus => Box::new(MinusParselet {}),
         TokenKind::Multiplication => Box::new(MultiplicationParselet {}),
@@ -169,6 +173,12 @@ mod tests {
         ]);
         evaluate_and_assert("null", vec![
             TypeMatcher::Null,
+        ]);
+        evaluate_and_assert("true", vec![
+            TypeMatcher::Boolean(&true),
+        ]);
+        evaluate_and_assert("false", vec![
+            TypeMatcher::Boolean(&false),
         ]);
     }
 
