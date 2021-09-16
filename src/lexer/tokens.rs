@@ -123,6 +123,7 @@ pub enum TokenKind {
     // Operators
     Assign,
     Equals,
+    NotEquals,
     Minus,
     Plus,
     Multiplication,

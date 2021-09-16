@@ -18,6 +18,7 @@ use crate::parser::p_d_brace::{LeftBraceParselet, RightBraceParselet};
 use crate::parser::p_s_return::ReturnParselet;
 use crate::parser::p_s_assign::AssignParselet;
 use crate::parser::p_v_boolean::BooleanParselet;
+use crate::parser::p_o_equals::{EqualsParselet, EqualsOrNequals};
 
 mod p_o_plus;
 mod p_o_minus;
@@ -35,6 +36,7 @@ mod p_d_brace;
 mod p_s_return;
 mod p_s_assign;
 mod p_v_boolean;
+mod p_o_equals;
 
 pub struct ParseError {
     pub msg: String,
@@ -85,6 +87,8 @@ fn get_parselet(token: &Token) -> Box<dyn Parselet> {
         TokenKind::False => Box::new(BooleanParselet { value: false }),
         TokenKind::Plus => Box::new(PlusParselet {}),
         TokenKind::Minus => Box::new(MinusParselet {}),
+        TokenKind::Equals => Box::new(EqualsParselet { equality_type: EqualsOrNequals::Equals }),
+        TokenKind::NotEquals => Box::new(EqualsParselet { equality_type: EqualsOrNequals::Nequals }),
         TokenKind::Multiplication => Box::new(MultiplicationParselet {}),
         TokenKind::LeftParens => Box::new(LeftParensParselet {}),
         TokenKind::RightParens => Box::new(RightParensParselet {}),
@@ -110,6 +114,8 @@ fn rbp_for(token: Option<&Token>) -> u32 {
             TokenKind::Plus => 5,
             TokenKind::Minus => 5,
             TokenKind::Multiplication => 10,
+            TokenKind::Equals => 30, // Dunno?
+            TokenKind::NotEquals => 30, // Dunno?
             TokenKind::LeftParens => 50,
             TokenKind::RightParens => 1,
             TokenKind::LeftBrace => 0,
@@ -226,6 +232,12 @@ mod tests {
         ]);
         evaluate_and_assert("2* (1 + 1)", vec![
             TypeMatcher::Integer(&4),
+        ]);
+        evaluate_and_assert("1 == 1", vec![
+            TypeMatcher::Boolean(&true),
+        ]);
+        evaluate_and_assert("1 != 1", vec![
+            TypeMatcher::Boolean(&true),
         ]);
     }
 

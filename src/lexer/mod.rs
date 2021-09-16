@@ -250,6 +250,10 @@ impl LexBuffer {
                     "*" => Ok(Some(self.pop_buffer(TokenKind::Multiplication))),
                     "->" => Ok(Some(self.pop_buffer(TokenKind::Arrow))),
                     ";" => Ok(Some(self.pop_buffer(TokenKind::Semicolon))),
+                    "!" => Ok(self.pop_buffer_cond(
+                        TokenKind::Assign, // TODO: This should yield negate operator!
+                        char_is_not(peek, '='))),
+                    "!=" => Ok(Some(self.pop_buffer(TokenKind::NotEquals))),
                     "=" => Ok(self.pop_buffer_cond(
                         TokenKind::Assign,
                         char_is_not(peek, '='))),
@@ -433,6 +437,7 @@ fn is_delimiting(c: &char) -> bool {
         ',' => true,
         '.' => true,
         '=' => true,
+        '!' => true,
         _ => false
     }
 }
@@ -461,7 +466,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null, LeftBrace, RightBrace, Return, If, Else, True, False};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null, LeftBrace, RightBrace, Return, If, Else, True, False, NotEquals};
 
     // Internal implementation test helpers
 
@@ -543,6 +548,7 @@ mod tests {
         token_lexes_to("else", Else);
         token_lexes_to("=", Assign);
         token_lexes_to("==", Equals);
+        token_lexes_to("!=", NotEquals);
         token_lexes_to("foo", Identifier("foo".to_string()));
         for nmbr in 0..100 {
             token_lexes_to(&nmbr.to_string(), Integer(nmbr));

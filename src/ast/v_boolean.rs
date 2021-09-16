@@ -25,6 +25,12 @@ pub struct BooleanValue {
     value: bool,
 }
 
+impl BooleanValue {
+    pub fn rc(value: bool) -> Rc<BooleanValue> {
+        Rc::new(BooleanValue { value })
+    }
+}
+
 impl Value for BooleanValue {
     fn type_matcher(&self) -> TypeMatcher {
         TypeMatcher::Boolean(&self.value)
