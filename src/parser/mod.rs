@@ -16,6 +16,7 @@ use crate::parser::p_v_string::StringParselet;
 use crate::parser::p_v_null::NullParselet;
 use crate::parser::p_d_brace::{LeftBraceParselet, RightBraceParselet};
 use crate::parser::p_s_return::ReturnParselet;
+use crate::parser::p_s_assign::AssignParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -31,6 +32,7 @@ mod p_s_fun;
 mod p_d_comma;
 mod p_d_brace;
 mod p_s_return;
+mod p_s_assign;
 
 pub struct ParseError {
     pub msg: String,
@@ -90,6 +92,7 @@ fn get_parselet(token: &Token) -> Box<dyn Parselet> {
         TokenKind::Semicolon => Box::new(SemicolonParselet {}),
         TokenKind::Comma => Box::new(CommaParselet {}),
         TokenKind::Null => Box::new(NullParselet {}),
+        TokenKind::Assign => Box::new(AssignParselet {}),
         _ => { panic!("get_parselet() not implemented for {:?}", token.token_kind); }
     };
 }
@@ -98,6 +101,7 @@ fn rbp_for(token: Option<&Token>) -> u32 {
     if let Some(token) = token {
         return match token.token_kind {
             TokenKind::Identifier(_) => 0,
+            TokenKind::Assign => 1,
             TokenKind::Integer(_) => 0,
             TokenKind::Plus => 5,
             TokenKind::Minus => 5,
@@ -230,6 +234,15 @@ mod tests {
         evaluate_and_assert("let a = 1; let b = 2", vec![
             TypeMatcher::Void,
             TypeMatcher::Void,
+        ]);
+    }
+
+    #[test]
+    fn parse_assign_statement() {
+        evaluate_and_assert("let a = 1; a = 5; a", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&5)
         ]);
     }
 

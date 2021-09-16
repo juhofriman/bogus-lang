@@ -16,6 +16,7 @@ pub mod v_string;
 pub mod v_null;
 pub mod s_grouped;
 pub mod s_return;
+pub mod s_assign;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -33,6 +34,9 @@ impl EvaluationError {
     }
     pub fn cant_resolve(name: &str) -> EvaluationError {
         EvaluationError::new(format!("Can't resolve variable `{}`", name))
+    }
+    pub fn cant_assing(name: &str) -> EvaluationError {
+        EvaluationError::new(format!("Can't assing to variable `{}`", name))
     }
     pub fn does_not_support_prefix_minus(me: TypeMatcher) -> EvaluationError {
         EvaluationError::new(format!("{} does not support prefix minus", me))
