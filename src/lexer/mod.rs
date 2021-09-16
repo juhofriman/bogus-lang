@@ -221,6 +221,12 @@ impl LexBuffer {
                     "return" => Ok(self.pop_buffer_cond(
                         TokenKind::Return,
                         is_delimiting_opt(peek))),
+                    "if" => Ok(self.pop_buffer_cond(
+                        TokenKind::If,
+                        is_delimiting_opt(peek))),
+                    "else" => Ok(self.pop_buffer_cond(
+                        TokenKind::Else,
+                        is_delimiting_opt(peek))),
                     "null" => Ok(self.pop_buffer_cond(
                         TokenKind::Null,
                         is_delimiting_opt(peek))),
@@ -449,7 +455,7 @@ fn char_is_not(peek: Option<&char>, this: char) -> bool {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null, LeftBrace, RightBrace, Return};
+    use crate::lexer::tokens::TokenKind::{Let, Identifier, Assign, Integer, Str, Semicolon, RightParens, LeftParens, Arrow, Minus, Plus, Fun, Comma, Division, Equals, Const, Float, Dot, Multiplication, Null, LeftBrace, RightBrace, Return, If, Else};
 
     // Internal implementation test helpers
 
@@ -527,6 +533,8 @@ mod tests {
         token_lexes_to("const", Const);
         token_lexes_to("fun", Fun);
         token_lexes_to("return", Return);
+        token_lexes_to("if", If);
+        token_lexes_to("else", Else);
         token_lexes_to("=", Assign);
         token_lexes_to("==", Equals);
         token_lexes_to("foo", Identifier("foo".to_string()));
@@ -678,6 +686,15 @@ mod tests {
             dummy_token(Identifier("foo".to_string())),
             dummy_token(LeftBrace),
             dummy_token(Integer(1)),
+            dummy_token(RightBrace),
+        ]);
+        with_input_lexes_to("if something { } else {}", vec![
+            dummy_token(If),
+            dummy_token(Identifier("something".to_string())),
+            dummy_token(LeftBrace),
+            dummy_token(RightBrace),
+            dummy_token(Else),
+            dummy_token(LeftBrace),
             dummy_token(RightBrace),
         ]);
     }

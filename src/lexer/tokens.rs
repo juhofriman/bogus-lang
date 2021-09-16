@@ -117,6 +117,8 @@ pub enum TokenKind {
     Const,
     Fun,
     Return,
+    If,
+    Else,
 
     // Operators
     Assign,
