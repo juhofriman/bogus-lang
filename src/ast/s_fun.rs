@@ -82,6 +82,7 @@ impl Value for Function {
             }
 
         }
+        // TODO: this probably must wrap ReturnValue out
         self.expression.evaluate(&mut new_scope)
     }
 }
