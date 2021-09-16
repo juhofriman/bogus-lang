@@ -45,6 +45,9 @@ impl EvaluationError {
                 operator,
                     he_or_she.type_name()))
     }
+    pub fn invalid_arity(expected: usize, received: usize) -> EvaluationError {
+        EvaluationError::new(format!("Expecting {} arguments for call but {} given", expected, received))
+    }
 }
 
 impl Display for EvaluationError {

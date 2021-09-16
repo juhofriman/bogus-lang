@@ -46,15 +46,8 @@ mod tests {
     use crate::ast::e_identifier::IdentifierExpression;
 
     #[test]
-    fn test_call() {
+    fn test_non_resolved_call() {
         let mut scope = Scope::new();
-        evaluates_to_void(
-            FunStatement::new(
-                "foo".to_string(),
-                vec![],
-                IntegerExpression::rc(123))
-                .evaluate(&mut scope)
-        );
         errors_to(
             CallExpression::new(
                 IdentifierExpression::rc("bar".to_string()),
@@ -64,7 +57,7 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_found() {
+    fn test_resolved_call() {
         let mut scope = Scope::new();
 
         evaluates_to_void(
@@ -87,5 +80,45 @@ mod tests {
                 vec![]).evaluate(&mut scope),
             IntegerValue::rc_value(123),
         );
+    }
+
+    #[test]
+    fn test_argument_arity() {
+        let mut scope = Scope::new();
+
+        evaluates_to_void(
+            FunStatement::new(
+                "foo".to_string(),
+                vec![IdentifierExpression::new("a".to_string())],
+                IntegerExpression::rc(123))
+                .evaluate(&mut scope)
+        );
+
+        errors_to(
+            CallExpression::new(
+                IdentifierExpression::rc("foo".to_string()),
+                vec![]).evaluate(&mut scope),
+            "Expecting 1 arguments for call but 0 given",
+        );
+
+        evaluates_to(
+            CallExpression::new(
+                IdentifierExpression::rc("foo".to_string()),
+                vec![
+                    IntegerExpression::rc(1)
+                ]).evaluate(&mut scope),
+            IntegerValue::rc_value(123),
+        );
+
+        errors_to(
+            CallExpression::new(
+                IdentifierExpression::rc("foo".to_string()),
+                vec![
+                    IntegerExpression::rc(1),
+                    IntegerExpression::rc(1)
+                ]).evaluate(&mut scope),
+            "Expecting 1 arguments for call but 2 given",
+        );
+
     }
 }

@@ -69,6 +69,9 @@ impl Value for Function {
         TypeMatcher::Function
     }
     fn call(&self, scope: &mut Scope, args: Vec<Rc<dyn Value>>) -> Result<Rc<dyn Value>, EvaluationError> {
+        if self.args.len() != args.len() {
+            return Err( EvaluationError::invalid_arity(self.args.len(), args.len()) )
+        }
         let mut new_scope = Scope::sub(&scope);
         for (i, a) in self.args.iter().enumerate() {
             match args.get(i) {
