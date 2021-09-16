@@ -319,6 +319,22 @@ mod tests {
             TypeMatcher::Void,
             TypeMatcher::Integer(&1),
         ]);
+        evaluate_and_assert("fun a() -> fun () -> 1; a()();", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("fun a() -> fun (a) -> a; a()(5);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&5),
+        ]);
+        evaluate_and_assert("fun a(a) -> a(); a(fun () -> 1);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+        ]);
+        evaluate_and_assert("fun a(a) -> a(5); a(fun (b) -> b);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&5),
+        ]);
     }
 
     #[test]
@@ -347,7 +363,8 @@ mod tests {
                         for (index, received_expression) in things.iter().enumerate() {
                             match received_expression.evaluate(&mut scope) {
                                 Ok(res) =>
-                                    assert_eq!(res.type_matcher(), *expected.get(index).unwrap()),
+                                    assert_eq!(res.type_matcher(), *expected.get(index).unwrap(),
+                                               "Right from input: {}", input),
                                 Err(e) => panic!("Eval error: {:?}", e)
                             }
                         }
