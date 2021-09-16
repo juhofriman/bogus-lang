@@ -17,6 +17,9 @@ use crate::parser::p_v_null::NullParselet;
 use crate::parser::p_d_brace::{LeftBraceParselet, RightBraceParselet};
 use crate::parser::p_s_return::ReturnParselet;
 use crate::parser::p_s_assign::AssignParselet;
+use crate::parser::p_v_boolean::BooleanParselet;
+use crate::parser::p_o_equals::{EqualsParselet, EqualsOrNequals};
+use crate::parser::p_s_if::IfParselet;
 
 mod p_o_plus;
 mod p_o_minus;
@@ -33,6 +36,9 @@ mod p_d_comma;
 mod p_d_brace;
 mod p_s_return;
 mod p_s_assign;
+mod p_v_boolean;
+mod p_o_equals;
+mod p_s_if;
 
 pub struct ParseError {
     pub msg: String,
@@ -79,13 +85,18 @@ fn get_parselet(token: &Token) -> Box<dyn Parselet> {
         TokenKind::Identifier(name) => Box::new(IdentifierParselet { value: name.clone() }),
         TokenKind::Integer(value) => Box::new(IntegerParselet { value: *value }),
         TokenKind::Str(value) => Box::new(StringParselet { value: value.clone() }),
+        TokenKind::True => Box::new(BooleanParselet { value: true }),
+        TokenKind::False => Box::new(BooleanParselet { value: false }),
         TokenKind::Plus => Box::new(PlusParselet {}),
         TokenKind::Minus => Box::new(MinusParselet {}),
+        TokenKind::Equals => Box::new(EqualsParselet { equality_type: EqualsOrNequals::Equals }),
+        TokenKind::NotEquals => Box::new(EqualsParselet { equality_type: EqualsOrNequals::Nequals }),
         TokenKind::Multiplication => Box::new(MultiplicationParselet {}),
         TokenKind::LeftParens => Box::new(LeftParensParselet {}),
         TokenKind::RightParens => Box::new(RightParensParselet {}),
         TokenKind::LeftBrace => Box::new(LeftBraceParselet {}),
         TokenKind::RightBrace => Box::new(RightBraceParselet {}),
+        TokenKind::If => Box::new(IfParselet {}),
         TokenKind::Let => Box::new(LetParselet {}),
         TokenKind::Fun => Box::new(FunParselet {}),
         TokenKind::Return => Box::new(ReturnParselet {}),
@@ -106,6 +117,8 @@ fn rbp_for(token: Option<&Token>) -> u32 {
             TokenKind::Plus => 5,
             TokenKind::Minus => 5,
             TokenKind::Multiplication => 10,
+            TokenKind::Equals => 30, // Dunno?
+            TokenKind::NotEquals => 30, // Dunno?
             TokenKind::LeftParens => 50,
             TokenKind::RightParens => 1,
             TokenKind::LeftBrace => 0,
@@ -170,6 +183,12 @@ mod tests {
         evaluate_and_assert("null", vec![
             TypeMatcher::Null,
         ]);
+        evaluate_and_assert("true", vec![
+            TypeMatcher::Boolean(&true),
+        ]);
+        evaluate_and_assert("false", vec![
+            TypeMatcher::Boolean(&false),
+        ]);
     }
 
     #[test]
@@ -216,6 +235,12 @@ mod tests {
         ]);
         evaluate_and_assert("2* (1 + 1)", vec![
             TypeMatcher::Integer(&4),
+        ]);
+        evaluate_and_assert("1 == 1", vec![
+            TypeMatcher::Boolean(&true),
+        ]);
+        evaluate_and_assert("1 != 1", vec![
+            TypeMatcher::Boolean(&false),
         ]);
     }
 
@@ -364,6 +389,15 @@ mod tests {
         evaluate_and_assert("fun a() -> { return 1; let b = 1; let c = 2 return b + c; } a();", vec![
             TypeMatcher::Void,
             TypeMatcher::Integer(&1)
+        ]);
+    }
+
+    #[test]
+    fn test_if_statements() {
+        evaluate_and_assert("fun a(b) -> { if b { return 1; } return 2; }; a(true); a(false);", vec![
+            TypeMatcher::Void,
+            TypeMatcher::Integer(&1),
+            TypeMatcher::Integer(&2),
         ]);
     }
 

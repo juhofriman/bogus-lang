@@ -3,6 +3,7 @@ use rustyline::Editor;
 use rustyline::error::ReadlineError;
 use crate::ast::scope::Scope;
 use crate::parser::Parser;
+use crate::ast::TypeMatcher;
 
 mod lexer;
 mod parser;
@@ -119,7 +120,10 @@ fn eval(input: &str, scope: &mut Scope) {
                     for thing in things {
                         match thing.evaluate(scope) {
                             Ok(res) => {
-                                println!("{}", res.type_matcher());
+                                match res.type_matcher() {
+                                    TypeMatcher::Void => (),
+                                    _ => println!("{}", res.type_matcher())
+                                }
                             },
                             Err(eval_error) => {
                                 println!("{}", eval_error);

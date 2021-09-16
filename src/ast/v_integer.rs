@@ -1,5 +1,6 @@
 use crate::ast::{Expression, Scope, Value, EvaluationError, TypeMatcher};
 use std::rc::Rc;
+use crate::ast::v_boolean::BooleanValue;
 
 pub struct IntegerExpression {
     value: i32,
@@ -44,6 +45,31 @@ impl Value for IntegerValue {
 
     fn type_matcher(&self) -> TypeMatcher {
         TypeMatcher::Integer(&self.value)
+    }
+
+    fn apply_equals(&self, other: Rc<dyn Value>) -> Result<Rc<dyn Value>, EvaluationError> {
+        match other.type_matcher() {
+            TypeMatcher::Integer(other_value) =>
+                Ok(BooleanValue::rc(&self.value == other_value)),
+
+            _ => Err(EvaluationError::operator_not_applicable(
+                "eq/neq",
+                self.type_matcher(),
+                other.type_matcher()))
+        }
+    }
+
+    fn apply_not_equals(&self, other: Rc<dyn Value>) -> Result<Rc<dyn Value>, EvaluationError> {
+        // ok, this is a bit bummer...
+        match other.type_matcher() {
+            TypeMatcher::Integer(other_value) =>
+                Ok(BooleanValue::rc(&self.value != other_value)),
+
+            _ => Err(EvaluationError::operator_not_applicable(
+                "eq/neq",
+                self.type_matcher(),
+                other.type_matcher()))
+        }
     }
 
     fn apply_prefix_minus(&self) -> Result<Rc<dyn Value>, EvaluationError> {

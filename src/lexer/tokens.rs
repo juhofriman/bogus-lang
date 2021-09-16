@@ -117,10 +117,13 @@ pub enum TokenKind {
     Const,
     Fun,
     Return,
+    If,
+    Else,
 
     // Operators
     Assign,
     Equals,
+    NotEquals,
     Minus,
     Plus,
     Multiplication,
@@ -144,6 +147,8 @@ pub enum TokenKind {
     Float(f32),
     Str(String),
     Null,
+    True,
+    False,
 }
 
 #[cfg(test)]

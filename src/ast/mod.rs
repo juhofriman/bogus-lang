@@ -17,6 +17,9 @@ pub mod v_null;
 pub mod s_grouped;
 pub mod s_return;
 pub mod s_assign;
+pub mod v_boolean;
+pub mod e_equals;
+pub mod s_if;
 
 #[derive(Debug)]
 pub struct EvaluationError {
@@ -66,6 +69,7 @@ impl Display for EvaluationError {
 pub enum TypeMatcher<'a> {
     Integer(&'a i32),
     String(&'a str),
+    Boolean(&'a bool),
     Null,
     Void,
     Function,
@@ -76,6 +80,7 @@ impl TypeMatcher<'_> {
         match self {
             TypeMatcher::Integer(_) => "Integer",
             TypeMatcher::String(_) => "String",
+            TypeMatcher::Boolean(_) => "Boolean",
             TypeMatcher::Null => "Null",
             TypeMatcher::Void => "Void",
             TypeMatcher::Function => "Fn",
@@ -88,6 +93,7 @@ impl Display for TypeMatcher<'_> {
         match self {
             TypeMatcher::Integer(v) => write!(f, "{}", v),
             TypeMatcher::String(v) => write!(f, "{}", v),
+            TypeMatcher::Boolean(v) => write!(f, "{}", v),
             _ => write!(f, "{}", self.type_name())
         }
     }
@@ -119,6 +125,19 @@ pub trait Expression {
 pub trait Value {
     fn type_matcher(&self) -> TypeMatcher;
     fn is_return_value(&self) -> bool { false }
+    fn is_truthy(&self) -> bool { true } // true, because most of the values are truthy!!
+    fn apply_equals(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "==",
+            self.type_matcher(),
+            other.type_matcher()))
+    }
+    fn apply_not_equals(&self, other: Rc<dyn Value>) ->  Result<Rc<dyn Value>, EvaluationError> {
+        Err( EvaluationError::operator_not_applicable(
+            "!=",
+            self.type_matcher(),
+            other.type_matcher()))
+    }
     fn apply_prefix_minus(&self) -> Result<Rc<dyn Value>, EvaluationError> {
         Err( EvaluationError::does_not_support_prefix_minus(self.type_matcher()))
     }
