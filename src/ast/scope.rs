@@ -1,4 +1,4 @@
-use crate::ast::Value;
+use crate::ast::{Value, EvaluationError};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -30,6 +30,12 @@ impl<'a> Scope<'a> {
                 None => None,
                 Some(parent_scope) => parent_scope.resolve(name)
             },
+        }
+    }
+    pub fn resolve_result(&self, name: &String) -> Result<Rc<dyn Value>, EvaluationError> {
+        match self.resolve(name) {
+            Some(value) => Ok(value),
+            None => Err(EvaluationError::cant_resolve(name)),
         }
     }
 }

@@ -59,9 +59,18 @@ impl Expression for AnonFunction {
     }
 }
 
-struct Function {
+pub struct Function {
     expression: Rc<dyn Expression>,
     args: Rc<Vec<IdentifierExpression>>,
+}
+
+impl Function {
+    pub fn rc(args: Vec<IdentifierExpression>, expression: Rc<dyn Expression>) -> Rc<Function> {
+        Rc::new( Function {
+            expression,
+            args: Rc::new(args),
+        })
+    }
 }
 
 impl Value for Function {
