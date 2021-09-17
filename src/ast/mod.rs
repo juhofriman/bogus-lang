@@ -8,7 +8,7 @@ pub mod e_plus;
 pub mod e_identifier;
 pub mod s_fun;
 pub mod e_call;
-mod v_void;
+pub mod v_void;
 pub mod e_minus;
 pub mod s_let;
 pub mod e_multiplication;

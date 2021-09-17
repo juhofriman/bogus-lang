@@ -1,0 +1,12 @@
+fun fibonacci(n, a, b) -> {
+    if n == 0 {
+        return a;
+    }
+    let next = a + b;
+    println(next);
+    fibonacci(n - 1, b, next);
+}
+
+println("Printing out Fibonacci series ...");
+fibonacci(15, 0, 1);
+println("Done");

@@ -4,10 +4,13 @@ use rustyline::error::ReadlineError;
 use crate::ast::scope::Scope;
 use crate::parser::Parser;
 use crate::ast::TypeMatcher;
+use crate::bogusstd::prepare_scope;
+use std::{env, fs};
 
 mod lexer;
 mod parser;
 mod ast;
+mod bogusstd;
 
 enum ReplMode {
     Normal,
@@ -24,9 +27,26 @@ fn prompt(repl_mode: &ReplMode) -> &str {
 }
 
 fn main() {
+
+    let args: Vec<String> = env::args().collect();
+    let arg_one = args.get(1).expect("Pass filename or repl as an argument");
+
+    let mut scope = Scope::new();
+    prepare_scope(&mut scope);
+    if arg_one == "repl" {
+        run_repl(&mut scope)
+    } else {
+        let contents = fs::read_to_string(arg_one)
+            .expect("Something went wrong reading the file");
+        eval(contents.as_str(), &mut scope)
+    }
+
+}
+
+fn run_repl(scope: &mut Scope) {
     let mut repl_mode = ReplMode::Normal;
     let mut rl = Editor::<()>::new();
-    let mut scope = Scope::new();
+
     loop {
         let readline = rl.readline(prompt(&repl_mode));
         match readline {
@@ -52,7 +72,7 @@ fn main() {
                                 ast_input(&line);
                             }
                             ReplMode::Normal => {
-                                eval(&line, &mut scope);
+                                eval(&line, scope);
                             }
                         }
                     }
